@@ -1,5 +1,5 @@
 {
-  "name": "@vaziliybober/boilerplate-nodejs",
+  "name": "@vaziliybober/operpad",
   "version": "0.1.0",
   "description": "",
   "type": "module",
@@ -9,14 +9,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vaziliybober/boilerplate-nodejs.git"
+    "url": "git+https://github.com/vaziliybober/operpad.git"
   },
   "author": "Vasiliy Bobrov",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/vaziliybober/boilerplate-nodejs/issues"
+    "url": "https://github.com/vaziliybober/operpad/issues"
   },
-  "homepage": "https://github.com/vaziliybober/boilerplate-nodejs#readme",
+  "homepage": "https://github.com/vaziliybober/operpad#readme",
   "dependencies": {
     "debug": "^4.3.1"
   },
