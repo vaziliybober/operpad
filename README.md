@@ -1,8 +1,7 @@
-# Boilerplate NodeJS
+# OperLib
 
-[![Maintainability](https://api.codeclimate.com/v1/badges/816ac265191b34cc086b/maintainability)](https://codeclimate.com/github/vaziliybober/boilerplate-nodejs/maintainability)
-[![Test Coverage](https://api.codeclimate.com/v1/badges/816ac265191b34cc086b/test_coverage)](https://codeclimate.com/github/vaziliybober/boilerplate-nodejs/test_coverage)
-![Node CI](https://github.com/vaziliybober/boilerplate-nodejs/workflows/Node%20CI/badge.svg)
+[![Maintainability](https://api.codeclimate.com/v1/badges/d39657a46273ef7dbeb8/maintainability)](https://codeclimate.com/github/vaziliybober/operlib/maintainability)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/d39657a46273ef7dbeb8/test_coverage)](https://codeclimate.com/github/vaziliybober/operlib/test_coverage)
+[![Node CI](https://github.com/vaziliybober/operlib/actions/workflows/nodejs.yml/badge.svg)](https://github.com/vaziliybober/operlib/actions/workflows/nodejs.yml)
 
-My boilerplate for nodejs with jest, eslint, prettier and Github Actions
-workflow
+Maybe it'll be a library for operational transformation
