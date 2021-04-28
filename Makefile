@@ -19,6 +19,9 @@ prettier:
 check-prettier:
 	bash check-prettier.sh
 
+lint-fix:
+	npx eslint . --fix --ext js
+
 publish:
 	npm publish --dry-run
 
