@@ -1,33 +1,34 @@
-export default (a, b) => a + b;
+export const insert = (text, pos, content) =>
+  text.substr(0, pos) + content + text.substr(pos);
 
-export const insert = (text, i, symbol) =>
-  text.substr(0, i) + symbol + text.substr(i);
-
-export const remove = (text, i) => text.substr(0, i) + text.substr(i + 1);
+export const remove = (text, pos, length = 1) =>
+  text.substr(0, pos) + text.substr(pos + length);
 
 const operationMap = {
-  insert,
-  remove,
+  insert: (text, { pos, content }) => insert(text, pos, content),
+  remove: (text, { pos, length }) => remove(text, pos, length),
 };
 
-export const apply = (o, text) => {
-  const { type, i, symbol } = o;
-  return operationMap[type](text, i, symbol);
+export const apply = (oper, text) => {
+  const { type, data } = oper;
+  return operationMap[type](text, data);
 };
 
-export const transform = (text, o1, o2) => {
-  const { type: type1, i: i1, symbol: symbol1 } = o1;
-  const { type: type2, i: i2 } = o2;
-
-  if (type1 === 'insert' && type2 === 'insert') {
-    const i1_ = i1 <= i2 ? i1 : i1 + 1;
+export const transform = (oper, against) => {
+  if (oper.type === 'insert' && against.type === 'insert') {
+    const pos =
+      oper.data.pos <= against.data.pos
+        ? oper.data.pos
+        : oper.data.pos + against.data.content.length;
 
     return {
       type: 'insert',
-      i: i1_,
-      symbol: symbol1,
+      data: {
+        pos,
+        content: oper.data.content,
+      },
     };
   }
 
-  throw new Error(`Unsupported types: ${type1}-${type2}`);
+  throw new Error(`Unsupported types: ${oper.type}-${against.type}`);
 };
