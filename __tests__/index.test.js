@@ -1,4 +1,4 @@
-import { insert, remove, transform, apply } from '../src/index.js';
+import { insert, remove, transform, apply } from '../lib/index.js';
 
 test('insert', () => {
   expect(insert('hello world!', 5, ', cruel')).toBe('hello, cruel world!');

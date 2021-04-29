@@ -4,7 +4,7 @@
   "description": "A slack-like chat with channels",
   "main": "dist/index.js",
   "bin": {
-    "slack": "dist/bin/slack.js"
+    "run": "dist/bin/run.js"
   },
   "engines": {
     "node": ">= 14"
@@ -15,7 +15,7 @@
     "build-server": "babel server --out-dir dist --source-maps inline && cp -r server/views dist/views",
     "build-app": "npx webpack --env production",
     "build": "npm run build-app && npm run build-server",
-    "start": "NODE_ENV=production node dist/bin/slack.js",
+    "start": "NODE_ENV=production node dist/bin/run.js",
     "postinstall": "npm run build"
   },
   "repository": {
