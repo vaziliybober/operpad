@@ -30,9 +30,11 @@
   "homepage": "https://github.com/vaziliybober/operpad#readme",
   "dependencies": {
     "@reduxjs/toolkit": "^1.5.0",
+    "@uiw/react-codemirror": "^3.0.6",
     "axios": "^0.21.0",
     "bootstrap": "^4.5.3",
     "classnames": "^2.2.6",
+    "codemirror": "^5.61.0",
     "core-js": "^3.8.0",
     "cssnano": "^4.1.10",
     "debug": "^4.3.1",

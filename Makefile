@@ -28,7 +28,7 @@ lint:
 	npx eslint . --ext js,jsx
 
 lint-fix:
-	npx eslint . --fix --ext js
+	npx eslint . --fix --ext js,jsx
 
 prettier:
 	npx prettier . --write
