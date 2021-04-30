@@ -1,10 +1,17 @@
 import React from 'react';
 import CodeMirror from '@uiw/react-codemirror';
+import useOperations from '../hooks/useOperations.js';
 
 const findSum = (numbers) => numbers.reduce((a, b) => a + b, 0);
 
 const App = () => {
+  const [operations, { addUserOperations }] = useOperations();
+
   const handleChange = (editor, change) => {
+    if (change.origin === 'setValue') {
+      return;
+    }
+
     const { lines } = editor.doc.children[0];
 
     const pos =
@@ -36,19 +43,18 @@ const App = () => {
     };
 
     if (somethingWasRemoved && somethingWasInserted) {
-      console.log('r+i');
-      console.log(buildRemoveOperation());
-      console.log(buildInsertOperation());
+      addUserOperations(buildRemoveOperation(), buildInsertOperation());
     } else if (somethingWasRemoved) {
-      console.log('r');
-      console.log(buildRemoveOperation());
+      addUserOperations(buildRemoveOperation());
     } else if (somethingWasInserted) {
-      console.log('i');
-      console.log(buildInsertOperation());
+      addUserOperations(buildInsertOperation());
     } else {
       throw new Error('Nothing was removed or inserted!');
     }
   };
+
+  console.log(operations);
+
   return (
     <>
       <h1 className="text-center">Operpad</h1>
