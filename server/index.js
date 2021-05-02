@@ -6,7 +6,7 @@ import fastify from 'fastify';
 import pointOfView from 'point-of-view';
 import fastifyStatic from 'fastify-static';
 import _ from 'lodash';
-import { apply, transform } from '../lib/index.js';
+import Operation, { transform } from '../lib/operation.js';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -35,7 +35,7 @@ const setUpStaticAssets = (app) => {
 
 const printRevisions = (revisions) => {
   revisions.forEach((rev, i) => {
-    console.log('Revision', i, ':', rev);
+    console.log('Revision', i, ':', rev.toString());
   });
 };
 
@@ -47,36 +47,29 @@ export default () => {
 
   const io = Socket(app.server);
 
-  const state = { text: 'hello\nworld', revisions: [] };
+  const state = { text: 'Lorem ipsum', revisions: [] };
 
   io.on('connection', (socket) => {
     socket.on('operation', (data) => {
-      const { operation, syncedAt, userId } = data;
+      const { operation: operationJSON, syncedAt, userId } = data;
+      const operation = Operation.fromJSON(operationJSON);
       const revisions = state.revisions.slice(syncedAt + 1);
 
-      const transformedOperation = revisions
-        .flat()
-        .reduce((acc, revO) => acc.map((o) => transform(o, revO)), operation);
+      const revisionOperation = revisions.reduce(
+        (acc, revOper) => acc.concat(revOper),
+        new Operation(),
+      );
 
-      // if (revisions.length > 0) {
-      //   const a = operation[0];
-      //   console.log(a);
-      //   const b = revisions.flat()[0];
-      //   console.log(b);
-      //   console.log(transform(a, b));
-      // }
-
+      const [, transformedOperation] = transform(revisionOperation, operation);
       state.revisions.push(transformedOperation);
 
       io.emit('operation', {
-        operation: transformedOperation,
+        operation: transformedOperation.toJSON(),
         revisionIndex: state.revisions.length - 1,
         userId,
       });
 
-      transformedOperation.forEach((o) => {
-        state.text = apply(o, state.text);
-      });
+      state.text = transformedOperation.apply(state.text);
 
       console.log('---------------');
       console.log(state.text);

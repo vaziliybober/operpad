@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
+import _ from 'lodash';
 import useOperations from '../hooks/useOperations.js';
 import useToReceive from '../hooks/useToReceive.js';
 import useText from '../hooks/useText.js';
 import { useSocketContext } from '../contexts/SocketContext.jsx';
 import { useUserIdContext } from '../contexts/UserIdContext.jsx';
-import { transform, apply } from '../../lib/index.js';
+import AtomicOperation from '../../lib/atomicOperation.js';
+import Operation, { transform } from '../../lib/operation.js';
+import useToSend from '../hooks/useToSend.js';
 
 const findSum = (numbers) => numbers.reduce((a, b) => a + b, 0);
 
@@ -13,7 +16,8 @@ const App = ({ text: initialText }) => {
   const [
     operations,
     {
-      addUserOperation,
+      setAwaitedOperation,
+      addBufferOperation,
       aknowledgeOwnOperation,
       transformAwaited,
       transformBuffer,
@@ -23,22 +27,39 @@ const App = ({ text: initialText }) => {
   const socket = useSocketContext();
   const userId = useUserIdContext();
   const [text, setText] = useText(initialText);
-  const [canSend, setCanSend] = useState(true);
+  const [toSend, { sendOperation, clearSentOperation }] = useToSend();
+  const [userOperation, setUserOperation] = useState(null);
+  const [usedOperation, setUsedOperation] = useState(false);
+
+  useEffect(() => {
+    if (userOperation === null) {
+      return;
+    }
+    if (operations.awaited.atomicOperations.length === 0) {
+      const data = {
+        operation: userOperation,
+        syncedAt: operations.syncedAt,
+        userId,
+      };
+      sendOperation(data);
+      setAwaitedOperation(userOperation);
+    } else {
+      addBufferOperation(userOperation);
+    }
+  }, [usedOperation]);
 
   const handleSend = () => {
-    const data = {
-      operation: operations.awaited,
-      syncedAt: operations.syncedAt,
-      userId,
-    };
-    console.log('Sent operation. Data: ', data);
-    socket.emit('operation', data);
-    setCanSend(false);
+    console.log('----------------');
+
+    console.log('Sent operation: ', operations.awaited.toString());
+    socket.emit('operation', toSend);
+    clearSentOperation();
   };
 
   const handleReceive = () => {
+    console.log('----------------');
     const received = toReceive[0];
-    console.log('Received operation: Data: ', received);
+    console.log('Received operation:', received.operation.toString());
     clearReceivedOperation();
     const { userId: receivedUserId, revisionIndex } = received;
     if (receivedUserId === userId) {
@@ -46,46 +67,49 @@ const App = ({ text: initialText }) => {
         'Aknowledged own operation, syncronized at revision ',
         revisionIndex,
       );
-      aknowledgeOwnOperation(revisionIndex);
-      setCanSend(true);
-    } else {
-      const transformedOperation = operations.awaited
-        .concat(operations.buffer)
-        .reduce(
-          (acc, receivedO) => acc.map((o) => transform(o, receivedO, true)),
-          received.operation,
-        );
-      const transformedOperationForBuffer = operations.awaited.reduce(
-        (acc, receivedO) => acc.map((o) => transform(o, receivedO, true)),
-        received.operation,
-      );
-      console.log(
-        'Transformed received operation for buffer:',
-        transformedOperationForBuffer,
-      );
-      console.log('Transformed received operation:', transformedOperation);
-      const newText = transformedOperation.reduce(
-        (acc, o) => apply(o, acc),
-        text,
-      );
-      setText(newText);
-      console.log('Applied transformed operation');
+      if (operations.buffer.atomicOperations.length !== 0) {
+        setAwaitedOperation(operations.buffer);
+        const data = {
+          operation: operations.buffer,
+          syncedAt: revisionIndex,
+          userId,
+        };
+        sendOperation(data);
+      }
 
-      const transformedAwaited = received.operation.reduce(
-        (acc, awaitedO) => acc.map((o) => transform(o, awaitedO)),
+      aknowledgeOwnOperation(revisionIndex);
+    } else {
+      const [transformedOnceOperation, transformedAwaited] = transform(
+        received.operation,
         operations.awaited,
       );
-      console.log('Awaited: ', operations.awaited);
-      console.log('Transformed awaited:', transformedAwaited);
       transformAwaited(transformedAwaited);
 
-      const transformedBuffer = transformedOperationForBuffer.reduce(
-        (acc, bufferO) => acc.map((o) => transform(o, bufferO)),
+      console.log(
+        'Transformed received operation once:',
+        transformedOnceOperation.toString(),
+      );
+
+      console.log('Awaited: ', operations.awaited.toString());
+      console.log('Transformed awaited:', transformedAwaited.toString());
+
+      const [transformedTwiceOperation, transformedBuffer] = transform(
+        transformedOnceOperation,
         operations.buffer,
       );
-      console.log('Buffer: ', operations.buffer);
-      console.log('Transformed buffer:', transformedBuffer);
       transformBuffer(transformedBuffer);
+
+      console.log(
+        'Transformed received operation twice:',
+        transformedTwiceOperation.toString(),
+      );
+
+      console.log('Buffer: ', operations.buffer.toString());
+      console.log('Transformed buffer:', transformedBuffer.toString());
+
+      const newText = transformedTwiceOperation.apply(text);
+      setText(newText);
+      console.log('Applied transformed operation');
     }
   };
 
@@ -109,35 +133,30 @@ const App = ({ text: initialText }) => {
     const buildRemoveO = () => {
       const length =
         findSum(removed.map((r) => r.length)) + (removed.length - 1);
-      return {
-        type: 'remove',
-        data: {
-          pos,
-          length,
-        },
-      };
+      return new AtomicOperation('remove', { pos, length });
     };
 
     const buildInsertO = () => {
       const content = inserted.join('\n');
-      return {
-        type: 'insert',
-        data: {
-          pos,
-          content,
-        },
-      };
+      return new AtomicOperation('insert', { pos, content });
     };
 
-    if (somethingWasRemoved && somethingWasInserted) {
-      addUserOperation(buildRemoveO(), buildInsertO());
-    } else if (somethingWasRemoved) {
-      addUserOperation(buildRemoveO());
-    } else if (somethingWasInserted) {
-      addUserOperation(buildInsertO());
-    } else {
+    const buildAtomicOperations = () => {
+      if (somethingWasRemoved && somethingWasInserted) {
+        return [buildRemoveO(), buildInsertO()];
+      }
+      if (somethingWasRemoved) {
+        return [buildRemoveO()];
+      }
+      if (somethingWasInserted) {
+        return [buildInsertO()];
+      }
       throw new Error('Nothing was removed or inserted!');
-    }
+    };
+
+    const operation = new Operation(...buildAtomicOperations());
+    setUserOperation(operation);
+    setUsedOperation((prevValue) => !prevValue);
   };
 
   return (
@@ -155,7 +174,7 @@ const App = ({ text: initialText }) => {
           type="button"
           className="mt-5 mr-3"
           onClick={handleSend}
-          disabled={!canSend || operations.awaited.length === 0}
+          disabled={_.isEmpty(toSend)}
         >
           send
         </button>

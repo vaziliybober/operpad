@@ -1,30 +1,31 @@
 /* eslint-disable no-param-reassign */
 
 import { createSlice } from '@reduxjs/toolkit';
+import Operation from '../../lib/operation.js';
 
 const slice = createSlice({
   name: 'operations',
   initialState: {
-    awaited: [],
-    buffer: [],
+    awaited: new Operation().toJSON(),
+    buffer: new Operation().toJSON(),
     syncedAt: 0,
   },
   reducers: {
-    addUserOperation: (state, { payload }) => {
-      const { awaited, buffer } = state;
+    setAwaitedOperation: (state, { payload }) => {
       const { operation } = payload;
-      if (awaited.length === 0) {
-        awaited.push(...operation);
-      } else {
-        buffer.push(...operation);
-      }
+      state.awaited = operation;
+    },
+    addBufferOperation: (state, { payload }) => {
+      const { operation } = payload;
+      state.buffer = Operation.fromJSON(state.buffer)
+        .concat(Operation.fromJSON(operation))
+        .toJSON();
     },
     aknowledgeOwnOperation: (state, { payload }) => {
-      const { buffer } = state;
       const { revisionIndex } = payload;
       return {
-        awaited: [...buffer],
-        buffer: [],
+        awaited: state.buffer,
+        buffer: new Operation().toJSON(),
         syncedAt: revisionIndex,
       };
     },

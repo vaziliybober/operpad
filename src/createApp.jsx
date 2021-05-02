@@ -9,6 +9,7 @@ import App from './components/App.jsx';
 import reducer, { actions } from './slices/index.js';
 import { SocketProvider } from './contexts/SocketContext.jsx';
 import { UserIdProvider } from './contexts/UserIdContext.jsx';
+import Operation from '../lib/operation.js';
 
 const buildStore = () => {
   if (!gon) {
@@ -19,8 +20,8 @@ const buildStore = () => {
     reducer,
     preloadedState: {
       operations: {
-        awaited: [],
-        buffer: [],
+        awaited: new Operation().toJSON(),
+        buffer: new Operation().toJSON(),
         syncedAt: gon.syncedAt,
       },
       toReceive: [],

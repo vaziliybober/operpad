@@ -4,7 +4,7 @@
 import AtomicOperation, { transformAtomic } from '../lib/atomicOperation.js';
 import Operation, { transform } from '../lib/operation.js';
 
-const genRandInt = (from, to) => from + to * Math.random();
+const genRandInt = (from, to) => from + Math.floor((to - from) * Math.random());
 
 const genRandString = (length) => {
   const symbols = 'qwertyuiopasdfghjklzxcvbnm1234567890';
@@ -60,8 +60,8 @@ describe('transformAtomic', () => {
     const o2 = new AtomicOperation('insert', { pos: 2, content: 'b' });
 
     expect(transformAtomic(o1, o2)).toEqual([
-      new AtomicOperation('insert', { pos: 3, content: 'a' }),
-      new AtomicOperation('insert', { pos: 2, content: 'b' }),
+      new AtomicOperation('insert', { pos: 2, content: 'a' }),
+      new AtomicOperation('insert', { pos: 3, content: 'b' }),
     ]);
   });
 });
@@ -77,11 +77,11 @@ describe('transform', () => {
     const o2 = new Operation(o21, o22);
 
     const to11 = new AtomicOperation('insert', { pos: 1, content: '+' });
-    const to12 = new AtomicOperation('insert', { pos: 5, content: '-' });
+    const to12 = new AtomicOperation('insert', { pos: 3, content: '-' });
     const to1 = new Operation(to11, to12);
 
-    const to21 = new AtomicOperation('insert', { pos: 3, content: '*' });
-    const to22 = new AtomicOperation('insert', { pos: 4, content: '/' });
+    const to21 = new AtomicOperation('insert', { pos: 4, content: '*' });
+    const to22 = new AtomicOperation('insert', { pos: 5, content: '/' });
     const to2 = new Operation(to21, to22);
 
     expect(transform(o1, o2)).toEqual([to1, to2]);
@@ -109,11 +109,12 @@ describe('transform', () => {
 
   it('insert-insert-random', () => {
     for (let i = 0; i < 1000; i++) {
-      const length = genRandInt(5, 15);
+      const length = genRandInt(5, 10);
       const str = genRandString(length);
       const oper1 = genRandOperation(str);
       const oper2 = genRandOperation(str);
       const [oper1Transformed, oper2Transformed] = transform(oper1, oper2);
+      console.log(oper1.toString(), oper1Transformed.toString());
 
       expect(oper1Transformed.apply(oper2.apply(str))).toEqual(
         oper2Transformed.apply(oper1.apply(str)),
