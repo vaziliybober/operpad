@@ -9,8 +9,17 @@ export default () => {
   return [
     operations,
     {
-      addUserOperations: (...opers) =>
-        dispatch(actions.addUserOperations({ operations: opers })),
+      addUserOperation: (...oper) =>
+        dispatch(actions.addUserOperation({ operation: oper })),
+      aknowledgeOwnOperation: (revisionIndex) => {
+        dispatch(actions.aknowledgeOwnOperation({ revisionIndex }));
+      },
+      transformAwaited: (transformedAwaited) => {
+        dispatch(actions.transformAwaited({ transformedAwaited }));
+      },
+      transformBuffer: (transformedBuffer) => {
+        dispatch(actions.transformBuffer({ transformedBuffer }));
+      },
     },
   ];
 };

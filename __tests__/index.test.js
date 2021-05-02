@@ -40,16 +40,16 @@ describe('apply', () => {
 });
 
 describe('transform', () => {
-  it('insert-insert', () => {
+  it('insert-insert1', () => {
     const text = 'ХБР';
-    const oper1 = {
+    const o1 = {
       type: 'insert',
       data: {
         pos: 1,
         content: 'ААА',
       },
     };
-    const oper2 = {
+    const o2 = {
       type: 'insert',
       data: {
         pos: 3,
@@ -57,10 +57,34 @@ describe('transform', () => {
       },
     };
 
-    const oper1t = transform(oper1, oper2);
-    const oper2t = transform(oper2, oper1);
+    const o1t = transform(o1, o2);
+    const o2t = transform(o2, o1);
 
-    expect(apply(oper1t, apply(oper2, text))).toBe('ХАААБР!!');
-    expect(apply(oper2t, apply(oper1, text))).toBe('ХАААБР!!');
+    expect(apply(o1t, apply(o2, text))).toBe('ХАААБР!!');
+    expect(apply(o2t, apply(o1, text))).toBe('ХАААБР!!');
+  });
+
+  it('insert-insert2', () => {
+    const text = 'hello';
+    const o1 = {
+      type: 'insert',
+      data: {
+        pos: 5,
+        content: '1',
+      },
+    };
+    const o2 = {
+      type: 'insert',
+      data: {
+        pos: 5,
+        content: '2',
+      },
+    };
+
+    const o1t = transform(o1, o2);
+    const o2t = transform(o2, o1);
+
+    expect(apply(o1t, apply(o2, text))).toBe('hello21');
+    expect(apply(o2t, apply(o1, text))).toBe('hello12');
   });
 });
