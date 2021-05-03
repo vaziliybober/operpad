@@ -47,7 +47,7 @@ export default () => {
 
   const io = Socket(app.server);
 
-  const state = { text: 'Lorem ipsum', revisions: [] };
+  const state = { text: 'hello\nworld\n!!!', revisions: [] };
 
   io.on('connection', (socket) => {
     socket.on('operation', (data) => {

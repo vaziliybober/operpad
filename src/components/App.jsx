@@ -83,6 +83,9 @@ const App = ({ text: initialText }) => {
         received.operation,
         operations.awaited,
       );
+      console.log('Awaited: ', operations.awaited.toString());
+      console.log('Transformed awaited:', transformedAwaited.toString());
+
       transformAwaited(transformedAwaited);
 
       console.log(
@@ -90,22 +93,18 @@ const App = ({ text: initialText }) => {
         transformedOnceOperation.toString(),
       );
 
-      console.log('Awaited: ', operations.awaited.toString());
-      console.log('Transformed awaited:', transformedAwaited.toString());
-
       const [transformedTwiceOperation, transformedBuffer] = transform(
         transformedOnceOperation,
         operations.buffer,
       );
+      console.log('Buffer: ', operations.buffer.toString());
+      console.log('Transformed buffer:', transformedBuffer.toString());
       transformBuffer(transformedBuffer);
 
       console.log(
         'Transformed received operation twice:',
         transformedTwiceOperation.toString(),
       );
-
-      console.log('Buffer: ', operations.buffer.toString());
-      console.log('Transformed buffer:', transformedBuffer.toString());
 
       const newText = transformedTwiceOperation.apply(text);
       setText(newText);
@@ -133,22 +132,27 @@ const App = ({ text: initialText }) => {
     const buildRemoveO = () => {
       const length =
         findSum(removed.map((r) => r.length)) + (removed.length - 1);
+      console.log('remove:', pos, length);
       return new AtomicOperation('remove', { pos, length });
     };
 
     const buildInsertO = () => {
       const content = inserted.join('\n');
+      console.log('insert:', pos, content);
       return new AtomicOperation('insert', { pos, content });
     };
 
     const buildAtomicOperations = () => {
       if (somethingWasRemoved && somethingWasInserted) {
+        console.log('both');
         return [buildRemoveO(), buildInsertO()];
       }
       if (somethingWasRemoved) {
+        console.log('remove');
         return [buildRemoveO()];
       }
       if (somethingWasInserted) {
+        console.log('insert');
         return [buildInsertO()];
       }
       throw new Error('Nothing was removed or inserted!');
