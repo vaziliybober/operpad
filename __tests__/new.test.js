@@ -64,6 +64,51 @@ describe('transformAtomic', () => {
       new AtomicOperation('insert', { pos: 3, content: 'b' }),
     ]);
   });
+
+  it('delete-delete: 1left, 2right', () => {
+    const str = 'abcdefgh';
+    const o1 = new AtomicOperation('remove', { pos: 1, length: 2 });
+    const o2 = new AtomicOperation('remove', { pos: 5, length: 3 });
+    const [o1t, o2t] = transformAtomic(o1, o2);
+    expect(o1t.apply(o2.apply(str))).toEqual('ade');
+    expect(o2t.apply(o1.apply(str))).toEqual('ade');
+  });
+
+  it('delete-delete: 2left, 1right', () => {
+    const str = 'abcdefgh';
+    const o1 = new AtomicOperation('remove', { pos: 5, length: 3 });
+    const o2 = new AtomicOperation('remove', { pos: 1, length: 2 });
+    const [o1t, o2t] = transformAtomic(o1, o2);
+    expect(o1t.apply(o2.apply(str))).toEqual('ade');
+    expect(o2t.apply(o1.apply(str))).toEqual('ade');
+  });
+
+  it('delete-delete: 1 more left, 2 more right', () => {
+    const str = 'abcdefgh';
+    const o1 = new AtomicOperation('remove', { pos: 1, length: 3 });
+    const o2 = new AtomicOperation('remove', { pos: 2, length: 4 });
+    const [o1t, o2t] = transformAtomic(o1, o2);
+    expect(o1t.apply(o2.apply(str))).toEqual('agh');
+    expect(o2t.apply(o1.apply(str))).toEqual('agh');
+  });
+
+  it('delete-delete: 2 more left, 1 more right', () => {
+    const str = 'abcdefgh';
+    const o1 = new AtomicOperation('remove', { pos: 2, length: 4 });
+    const o2 = new AtomicOperation('remove', { pos: 1, length: 3 });
+    const [o1t, o2t] = transformAtomic(o1, o2);
+    expect(o1t.apply(o2.apply(str))).toEqual('agh');
+    expect(o2t.apply(o1.apply(str))).toEqual('agh');
+  });
+
+  it('delete-delete: 1 is bigger', () => {
+    const str = 'abcdefgh';
+    const o1 = new AtomicOperation('remove', { pos: 1, length: 6 });
+    const o2 = new AtomicOperation('remove', { pos: 3, length: 3 });
+    const [o1t, o2t] = transformAtomic(o1, o2);
+    expect(o1t.apply(o2.apply(str))).toEqual('ah');
+    expect(o2t.apply(o1.apply(str))).toEqual('ah');
+  });
 });
 
 describe('transform', () => {
@@ -108,13 +153,12 @@ describe('transform', () => {
   });
 
   it('insert-insert-random', () => {
-    for (let i = 0; i < 1000; i++) {
+    for (let i = 0; i < 10; i++) {
       const length = genRandInt(5, 10);
       const str = genRandString(length);
       const oper1 = genRandOperation(str);
       const oper2 = genRandOperation(str);
       const [oper1Transformed, oper2Transformed] = transform(oper1, oper2);
-      console.log(oper1.toString(), oper1Transformed.toString());
 
       expect(oper1Transformed.apply(oper2.apply(str))).toEqual(
         oper2Transformed.apply(oper1.apply(str)),
