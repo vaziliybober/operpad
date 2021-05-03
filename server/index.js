@@ -47,7 +47,11 @@ export default () => {
 
   const io = Socket(app.server);
 
-  const state = { text: 'hello\nworld\n!!!', revisions: [] };
+  const state = {
+    text:
+      '2svs00fy4vxswasdf\nasb\nasdfdf\n4a\n24asdf\ng2asdfasdf\nasdfsadfsadfsd\ng7hsg',
+    revisions: [],
+  };
 
   io.on('connection', (socket) => {
     socket.on('operation', (data) => {

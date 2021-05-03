@@ -132,27 +132,27 @@ const App = ({ text: initialText }) => {
     const buildRemoveO = () => {
       const length =
         findSum(removed.map((r) => r.length)) + (removed.length - 1);
-      console.log('remove:', pos, length);
+      console.log('pos:', pos, 'length:', length);
       return new AtomicOperation('remove', { pos, length });
     };
 
     const buildInsertO = () => {
       const content = inserted.join('\n');
-      console.log('insert:', pos, content);
+      console.log('pos:', pos, 'content:', content);
       return new AtomicOperation('insert', { pos, content });
     };
 
     const buildAtomicOperations = () => {
       if (somethingWasRemoved && somethingWasInserted) {
-        console.log('both');
+        console.log('removed and inserted');
         return [buildRemoveO(), buildInsertO()];
       }
       if (somethingWasRemoved) {
-        console.log('remove');
+        console.log('removed');
         return [buildRemoveO()];
       }
       if (somethingWasInserted) {
-        console.log('insert');
+        console.log('inserted');
         return [buildInsertO()];
       }
       throw new Error('Nothing was removed or inserted!');
