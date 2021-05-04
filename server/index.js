@@ -11,7 +11,7 @@ import {
   transform,
   apply,
   toStringOperation,
-} from '../lib/operation.js';
+} from './lib/operation.js';
 
 const isProduction = process.env.NODE_ENV === 'production';
 

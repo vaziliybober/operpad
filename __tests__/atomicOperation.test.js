@@ -1,9 +1,9 @@
 import makeAtomicOperation, {
   applyAtomic,
   transformAtomic,
-} from '../lib/atomicOperation.js';
+} from '../server/lib/atomicOperation.js';
 
-import { apply } from '../lib/operation.js';
+import { apply } from '../server/lib/operation.js';
 
 const checkTransform = (str, a1, a2, expectedResult) => {
   const [a1t, a2t] = transformAtomic(a1, a2);

@@ -6,7 +6,7 @@ import makeOperation, {
   composeOperations,
   transform,
   apply,
-} from '../../lib/operation.js';
+} from '../lib/operation.js';
 
 const App = ({ clientId, initialText, initialSyncIndex }) => {
   const [text, setText] = useState(initialText);

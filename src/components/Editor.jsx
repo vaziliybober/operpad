@@ -1,8 +1,7 @@
 import React from 'react';
-import 'codemirror/lib/codemirror.css';
 import { UnControlled as CodeMirror } from 'react-codemirror17';
-import makeAtomicOperation from '../../lib/atomicOperation.js';
-import makeOperation from '../../lib/operation.js';
+import makeAtomicOperation from '../../server/lib/atomicOperation.js';
+import makeOperation from '../lib/operation.js';
 
 const CODE_MIRROR_CONFIG = {
   configureMouse: () => ({ addNew: false }),
