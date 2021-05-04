@@ -3,15 +3,13 @@ import makeAtomicOperation, {
   transformAtomic,
 } from '../lib/atomicOperation.js';
 
-const applyMultiple = (str, aOperations) => {
-  return aOperations.reduce((acc, aOper) => applyAtomic(acc, aOper), str);
-};
+import { apply } from '../lib/operation.js';
 
 const checkTransform = (str, a1, a2, expectedResult) => {
   const [a1t, a2t] = transformAtomic(a1, a2);
 
-  expect(applyMultiple(applyAtomic(str, a1), a2t)).toEqual(expectedResult);
-  expect(applyMultiple(applyAtomic(str, a2), a1t)).toEqual(expectedResult);
+  expect(apply(applyAtomic(str, a1), a2t)).toEqual(expectedResult);
+  expect(apply(applyAtomic(str, a2), a1t)).toEqual(expectedResult);
 };
 
 describe('atomicTransform', () => {
@@ -69,7 +67,7 @@ describe('atomicTransform', () => {
     const a2 = makeAtomicOperation('remove', { pos: 1, length: 3 });
     checkTransform(str, a1, a2, 'ae+-fgh');
   });
-  it('delete-insert: right-left', () => {
+  it('delete-insert: left-right', () => {
     const str = 'abcdefgh';
     const a1 = makeAtomicOperation('remove', { pos: 1, length: 3 });
     const a2 = makeAtomicOperation('insert', { pos: 5, content: '+-' });

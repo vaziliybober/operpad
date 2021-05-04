@@ -1,12 +1,17 @@
 import 'regenerator-runtime/runtime';
 import path from 'path';
 import Pug from 'pug';
-import Socket from 'socket.io';
+import socketio from 'socket.io';
 import fastify from 'fastify';
 import pointOfView from 'point-of-view';
 import fastifyStatic from 'fastify-static';
 import _ from 'lodash';
-import Operation, { transform } from '../lib/operation.js';
+import {
+  composeOperations,
+  transform,
+  apply,
+  toStringOperation,
+} from '../lib/operation.js';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -40,54 +45,41 @@ const printRevisions = (revisions) => {
 };
 
 export default () => {
-  const app = fastify({ logger: true, prettyPrint: true });
+  const app = fastify({ logger: false, prettyPrint: true });
 
   setUpViews(app);
   setUpStaticAssets(app);
 
-  const io = Socket(app.server);
+  const io = socketio(app.server);
 
   const state = {
-    text:
-      '2svs00fy4vxswasdf\nasb\nasdfdf\n4a\n24asdf\ng2asdfasdf\nasdfsadfsadfsd\ng7hsg',
+    text: '',
     revisions: [],
   };
 
   io.on('connection', (socket) => {
-    socket.on('operation', (data) => {
-      const { operation: operationJSON, syncedAt, userId } = data;
-      const operation = Operation.fromJSON(operationJSON);
-      const revisions = state.revisions.slice(syncedAt + 1);
-
-      const revisionOperation = revisions.reduce(
-        (acc, revOper) => acc.concat(revOper),
-        new Operation(),
-      );
-
-      const [, transformedOperation] = transform(revisionOperation, operation);
+    socket.on('user-input', ({ operation, clientId, syncIndex }) => {
+      const unsyncedRevisions = state.revisions.slice(syncIndex + 1);
+      const serverOperation = composeOperations(...unsyncedRevisions);
+      const [, transformedOperation] = transform(serverOperation, operation);
       state.revisions.push(transformedOperation);
+      state.text = apply(state.text, transformedOperation);
+      // console.log(state.text);
 
-      io.emit('operation', {
-        operation: transformedOperation.toJSON(),
+      io.emit('broadcast-operation', {
+        operation: transformedOperation,
+        clientId,
         revisionIndex: state.revisions.length - 1,
-        userId,
       });
-
-      state.text = transformedOperation.apply(state.text);
-
-      console.log('---------------');
-      console.log(state.text);
-      printRevisions(state.revisions);
-      console.log('---------------');
     });
   });
 
   app.get('/', (_req, reply) => {
     reply.view('index.pug', {
       gon: {
+        clientId: _.uniqueId(),
         text: state.text,
-        syncedAt: state.revisions.length - 1,
-        userId: _.uniqueId('user'),
+        syncIndex: state.revisions.length - 1,
       },
     });
   });
