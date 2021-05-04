@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Editor from './Editor.jsx';
 import useSocket from '../hooks/useSocket';
 import makeOperation, {
@@ -9,7 +9,8 @@ import makeOperation, {
 } from '../lib/operation.js';
 
 const App = ({ clientId, initialText, initialSyncIndex }) => {
-  const [text, setText] = useState(initialText);
+  const text = useRef(initialText);
+  const [editorText, setEditorText] = useState(initialText);
   const [awaited, setAwaited] = useState(makeOperation());
   const [buffered, setBuffered] = useState(makeOperation());
   const [syncIndex, setSyncIndex] = useState(initialSyncIndex);
@@ -43,7 +44,9 @@ const App = ({ clientId, initialText, initialSyncIndex }) => {
             buffered,
           );
 
-          setText((prevText) => apply(prevText, operTransformedTwice));
+          const newText = apply(text.current, operTransformedTwice);
+          setEditorText(newText);
+          text.current = newText;
 
           setAwaited(transformedAwaited);
           setBuffered(transformedBuffered);
@@ -59,7 +62,7 @@ const App = ({ clientId, initialText, initialSyncIndex }) => {
   const handleChange = (operation) => {
     // console.log('User input operation detected:', toStringOperation(operation));
     if (awaited.length === 0) {
-      setText((prevText) => apply(prevText, operation));
+      text.current = apply(text.current, operation);
       socket.emit('user-input', { operation, clientId, syncIndex });
       setAwaited(operation);
     } else {
@@ -71,7 +74,7 @@ const App = ({ clientId, initialText, initialSyncIndex }) => {
     <>
       <h1 className="text-center pb-3 pt-3">Operpad</h1>
       <div className="border border-secondary bg-white">
-        <Editor text={text} onChange={handleChange} />
+        <Editor text={editorText} onChange={handleChange} />
       </div>
     </>
   );
