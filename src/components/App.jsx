@@ -1,72 +1,137 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Editor from './Editor.jsx';
-import useSocket from '../hooks/useSocket';
+import useSocket from '../hooks/useSocket.js';
+import useInterval from '../hooks/useInterval.js';
+import axios from 'axios';
 import makeOperation, {
   toStringOperation,
   composeOperations,
   transform,
   apply,
 } from '../lib/operation.js';
+import routes from '../routes.js';
 
-const App = ({ clientId, initialText, initialSyncIndex }) => {
-  const text = useRef(initialText);
-  const [editorText, setEditorText] = useState(initialText);
-  const [awaited, setAwaited] = useState(makeOperation());
-  const [buffered, setBuffered] = useState(makeOperation());
-  const [syncIndex, setSyncIndex] = useState(initialSyncIndex);
+const RETRY_INTERVAL = 300;
 
-  const socket = useSocket((sock) => {
-    sock.on(
-      'broadcast-operation',
-      ({ operation, clientId: originClientId, revisionIndex }) => {
-        // console.log(toStringOperation(operation));
-        const acknowledgedOwnOperation = originClientId === clientId;
-        if (acknowledgedOwnOperation) {
-          const newAwaited = buffered;
-          if (newAwaited.length !== 0) {
-            sock.emit('user-input', {
-              operation: newAwaited,
-              clientId,
-              syncIndex: revisionIndex,
-            });
-          }
-          setAwaited(newAwaited);
-          setBuffered(makeOperation());
-          setSyncIndex(revisionIndex);
-        } else {
-          const [operTransformedOnce, transformedAwaited] = transform(
-            operation,
-            awaited,
-          );
-
-          const [operTransformedTwice, transformedBuffered] = transform(
-            operTransformedOnce,
-            buffered,
-          );
-
-          const newText = apply(text.current, operTransformedTwice);
-          setEditorText(newText);
-          text.current = newText;
-
-          setAwaited(transformedAwaited);
-          setBuffered(transformedBuffered);
-        }
-      },
-    );
-
-    return () => {
-      socket.off('broadcast-operation');
+export const withRetryHandling = (callback, delay = 400) =>
+  function callbackWithRetryHandling(...params) {
+    const retry = async (attempt = 1) => {
+      try {
+        return await callback(...params);
+      } catch (error) {
+        console.log('Retry because of', error);
+        return new Promise((resolve) =>
+          setTimeout(() => resolve(retry(attempt + 1)), delay),
+        );
+      }
     };
-  });
+
+    return retry();
+  };
+
+const sendOperation = (operation, clientId, syncIndex) => {
+  withRetryHandling(async () => {
+    await axios.post(routes.userInputPath(), {
+      operation,
+      clientId,
+      syncIndex,
+    });
+  }, RETRY_INTERVAL)();
+};
+
+const App = ({ clientId, initialText, initialRevisionIndex }) => {
+  const text = useRef(initialText);
+  const awaited = useRef(makeOperation());
+  const buffered = useRef(makeOperation());
+  const syncIndex = useRef(initialRevisionIndex);
+  const lastRevisionIndex = useRef(initialRevisionIndex);
+
+  const [editorText, setEditorText] = useState(initialText);
+
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     loadNewOperations();
+  //   }, RETRY_INTERVAL);
+  // }, []);
+
+  const printState = () => {
+    console.log({
+      text: text.current,
+      awaited: awaited.current,
+      buffered: buffered.current,
+      syncIndex: syncIndex.current,
+      lastRevisionIndex: lastRevisionIndex.current,
+    });
+  };
+
+  const loadNewOperations = async () => {
+    try {
+      console.log('getting');
+      const response = await axios.get(
+        routes.newOperationsPath(lastRevisionIndex.current),
+      );
+      console.log('got');
+      const revisions = response.data;
+      if (revisions.length > 0) {
+        lastRevisionIndex.current = revisions[revisions.length - 1].index;
+      }
+      console.log(revisions);
+      revisions.forEach(processRevision);
+      printState();
+    } catch (e) {
+      console.log('error newOperations:', e);
+    }
+  };
+
+  useEffect(async () => {
+    while (true) {
+      await loadNewOperations();
+      await new Promise((res) => setTimeout(res, RETRY_INTERVAL));
+    }
+  }, []);
+
+  //useInterval(loadNewOperations, RETRY_INTERVAL);
 
   const handleChange = (operation) => {
     // console.log('User input operation detected:', toStringOperation(operation));
-    if (awaited.length === 0) {
-      text.current = apply(text.current, operation);
-      socket.emit('user-input', { operation, clientId, syncIndex });
-      setAwaited(operation);
+    text.current = apply(text.current, operation);
+    if (awaited.current.length === 0) {
+      awaited.current = operation;
+      sendOperation(operation, clientId, syncIndex.current);
+      //socket.emit('user-input', { operation, clientId, syncIndex });
     } else {
-      setBuffered(composeOperations(buffered, operation));
+      buffered.current = composeOperations(buffered.current, operation);
+    }
+
+    printState();
+  };
+
+  const processRevision = ({ operation, clientId: originClientId, index }) => {
+    const acknowledgedOwnOperation = originClientId === clientId;
+    syncIndex.current = index;
+    if (acknowledgedOwnOperation) {
+      awaited.current = buffered.current;
+      buffered.current = makeOperation();
+      if (awaited.current.length !== 0) {
+        sendOperation(awaited.current, clientId, syncIndex.current);
+      }
+    } else {
+      const [operTransformedOnce, transformedAwaited] = transform(
+        operation,
+        awaited.current,
+      );
+
+      const [operTransformedTwice, transformedBuffered] = transform(
+        operTransformedOnce,
+        buffered.current,
+      );
+
+      const newText = apply(text.current, operTransformedTwice);
+      setEditorText(newText);
+      text.current = newText;
+
+      awaited.current = transformedAwaited;
+      buffered.current = transformedBuffered;
     }
   };
 
@@ -76,6 +141,7 @@ const App = ({ clientId, initialText, initialSyncIndex }) => {
       <div className="border border-secondary bg-white">
         <Editor text={editorText} onChange={handleChange} />
       </div>
+      <button onClick={loadNewOperations}>Load new operations</button>
     </>
   );
 };

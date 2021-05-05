@@ -38,10 +38,8 @@ const setUpStaticAssets = (app) => {
   });
 };
 
-const printRevisions = (revisions) => {
-  revisions.forEach((rev, i) => {
-    console.log('Revision', i, ':', rev.toString());
-  });
+const makeRevision = (operation, clientId, index) => {
+  return { operation, clientId, index };
 };
 
 export default () => {
@@ -50,39 +48,53 @@ export default () => {
   setUpViews(app);
   setUpStaticAssets(app);
 
-  const io = socketio(app.server);
-
   const state = {
     text: '',
     revisions: [],
   };
 
-  io.on('connection', (socket) => {
-    socket.on('user-input', ({ operation, clientId, syncIndex }) => {
-      const unsyncedRevisions = state.revisions.slice(syncIndex + 1);
-      const serverOperation = composeOperations(...unsyncedRevisions);
-      const [, transformedOperation] = transform(serverOperation, operation);
-      state.revisions.push(transformedOperation);
-      state.text = apply(state.text, transformedOperation);
-      // console.log(state.text);
+  const printState = () => {
+    console.log('text:', state.text);
+    state.revisions.forEach(({ operation, clientId, index }) => {
+      console.log(`${index}. clientId: ${clientId}`);
+      console.log(toStringOperation(operation));
+    });
+    console.log('------------------');
+  };
 
-      io.emit('broadcast-operation', {
-        operation: transformedOperation,
-        clientId,
-        revisionIndex: state.revisions.length - 1,
+  app
+    .get('/', (_req, reply) => {
+      reply.view('index.pug', {
+        gon: {
+          clientId: _.uniqueId(),
+          text: state.text,
+          revisionIndex: state.revisions.length - 1,
+        },
       });
+    })
+    .get('/api/v1/newOperations/:lastRevisionIndex', (req, reply) => {
+      const lastRevisionIndex = Number(req.params.lastRevisionIndex);
+      const lastRevisions = state.revisions.slice(lastRevisionIndex + 1);
+      reply.send(lastRevisions);
+    })
+    .post('/api/v1/userInput', (req, reply) => {
+      const { operation, clientId, syncIndex } = req.body;
+      const unsyncedRevisions = state.revisions.slice(syncIndex + 1);
+      const serverOperation = composeOperations(
+        ...unsyncedRevisions.map((rev) => rev.operation),
+      );
+      const [, transformedOperation] = transform(serverOperation, operation);
+      const newRevision = makeRevision(
+        transformedOperation,
+        clientId,
+        state.revisions.length,
+      );
+      state.revisions.push(newRevision);
+      state.text = apply(state.text, transformedOperation);
+      printState();
+      reply.code(201);
+      reply.send();
     });
-  });
-
-  app.get('/', (_req, reply) => {
-    reply.view('index.pug', {
-      gon: {
-        clientId: _.uniqueId(),
-        text: state.text,
-        syncIndex: state.revisions.length - 1,
-      },
-    });
-  });
 
   return app;
 };
