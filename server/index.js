@@ -13,6 +13,30 @@ import {
   apply,
   toStringOperation,
 } from './lib/operation.js';
+import mongoose from 'mongoose';
+import Document from './DocumentSchema.js';
+
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost/operpad';
+
+const options = {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  useCreateIndex: true,
+  useFindAndModify: false,
+};
+
+mongoose.connect(MONGODB_URI, options);
+
+const DEFAULT_DATA_VALUE = '';
+
+const findOrCreateDocument = async (id) => {
+  const document = await Document.findById(id);
+  if (document) {
+    return document;
+  }
+
+  return await Document.create({ _id: id, data: DEFAULT_DATA_VALUE });
+};
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -44,17 +68,15 @@ const makeRevision = (operation, clientId, index) => {
 };
 
 export default () => {
-  const app = fastify({ logger: false, prettyPrint: true });
+  const app = fastify({ logger: true, prettyPrint: true });
 
   setUpViews(app);
   setUpStaticAssets(app);
 
-  const state = {
-    text: '',
-    revisions: [],
-  };
+  const documents = {};
 
-  const printState = () => {
+  const printState = (documentId, state) => {
+    console.log('documentId:', documentId);
     console.log('text:', state.text);
     state.revisions.forEach(({ operation, clientId, index }) => {
       console.log(`${index}. clientId: ${clientId}`);
@@ -67,23 +89,47 @@ export default () => {
     .get('/', (_req, reply) => {
       reply.redirect(`/${uuidV4()}`);
     })
-    .get('/:documentId', (req, reply) => {
+    .get('/:documentId', async (req, reply) => {
       const documentId = req.params.documentId;
-      console.log('docId:', documentId);
+      if (!Object.keys(documents).includes(documentId)) {
+        documents[documentId] = {
+          text: (await findOrCreateDocument(documentId)).data,
+          revisions: [],
+        };
+      }
+      const state = documents[documentId];
+      //console.log('state:', state);
+
       reply.view('index.pug', {
         gon: {
           clientId: _.uniqueId(),
+          documentId,
           text: state.text,
           revisionIndex: state.revisions.length - 1,
         },
       });
     })
-    .get('/api/v1/newOperations/:lastRevisionIndex', (req, reply) => {
-      const lastRevisionIndex = Number(req.params.lastRevisionIndex);
-      const lastRevisions = state.revisions.slice(lastRevisionIndex + 1);
-      reply.send(lastRevisions);
-    })
-    .post('/api/v1/userInput', (req, reply) => {
+    .get(
+      '/api/v1/newOperations/:documentId/:lastRevisionIndex',
+      (req, reply) => {
+        const documentId = req.params.documentId;
+        const state = documents[documentId];
+        if (!state) {
+          reply.redirect(`/api/v1/${documentId}`);
+          return;
+        }
+        const lastRevisionIndex = Number(req.params.lastRevisionIndex);
+        const lastRevisions = state.revisions.slice(lastRevisionIndex + 1);
+        reply.send(lastRevisions);
+      },
+    )
+    .post('/api/v1/userInput/:documentId', async (req, reply) => {
+      const documentId = req.params.documentId;
+      const state = documents[documentId];
+      if (!state) {
+        reply.redirect(`/api/v1/${documentId}`);
+        return;
+      }
       const { operation, clientId, syncIndex } = req.body;
       const unsyncedRevisions = state.revisions.slice(syncIndex + 1);
       const serverOperation = composeOperations(
@@ -97,7 +143,8 @@ export default () => {
       );
       state.revisions.push(newRevision);
       state.text = apply(state.text, transformedOperation);
-      printState();
+      printState(documentId, state);
+      Document.findByIdAndUpdate(documentId, { data: state.text }).exec();
       reply.code(201);
       reply.send();
     });

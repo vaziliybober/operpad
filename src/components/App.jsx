@@ -31,17 +31,8 @@ export const withRetryHandling = (callback, delay = 400) =>
     return retry();
   };
 
-const sendOperation = (operation, clientId, syncIndex) => {
-  withRetryHandling(async () => {
-    await axios.post(routes.userInputPath(), {
-      operation,
-      clientId,
-      syncIndex,
-    });
-  }, RETRY_INTERVAL)();
-};
-
-const App = ({ clientId, initialText, initialRevisionIndex }) => {
+const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
+  console.log(documentId);
   const text = useRef(initialText);
   const awaited = useRef(makeOperation());
   const buffered = useRef(makeOperation());
@@ -53,6 +44,16 @@ const App = ({ clientId, initialText, initialRevisionIndex }) => {
 
   const onNewDocument = () => {
     setNewDocumentId(uuidV4());
+  };
+
+  const sendOperation = (operation, clientId, syncIndex) => {
+    withRetryHandling(async () => {
+      await axios.post(routes.userInputPath(documentId), {
+        operation,
+        clientId,
+        syncIndex,
+      });
+    }, RETRY_INTERVAL)();
   };
 
   // useEffect(() => {
@@ -74,7 +75,7 @@ const App = ({ clientId, initialText, initialRevisionIndex }) => {
   const loadNewOperations = async () => {
     try {
       const response = await axios.get(
-        routes.newOperationsPath(lastRevisionIndex.current),
+        routes.newOperationsPath(documentId, lastRevisionIndex.current),
       );
       const revisions = response.data;
       if (revisions.length > 0) {

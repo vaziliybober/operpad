@@ -6,6 +6,7 @@ import App from './components/App.jsx';
 export default () => (
   <App
     clientId={gon.clientId}
+    documentId={gon.documentId}
     initialText={gon.text}
     initialRevisionIndex={gon.revisionIndex}
   />
