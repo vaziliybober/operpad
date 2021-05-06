@@ -10,6 +10,8 @@ import makeOperation, {
   apply,
 } from '../lib/operation.js';
 import routes from '../routes.js';
+import { v4 as uuidV4 } from 'uuid';
+import { CopyToClipboard } from 'react-copy-to-clipboard';
 
 const RETRY_INTERVAL = 300;
 
@@ -47,6 +49,11 @@ const App = ({ clientId, initialText, initialRevisionIndex }) => {
   const lastRevisionIndex = useRef(initialRevisionIndex);
 
   const [editorText, setEditorText] = useState(initialText);
+  const [newDocumentId, setNewDocumentId] = useState(uuidV4());
+
+  const onNewDocument = () => {
+    setNewDocumentId(uuidV4());
+  };
 
   // useEffect(() => {
   //   const interval = setInterval(() => {
@@ -66,11 +73,9 @@ const App = ({ clientId, initialText, initialRevisionIndex }) => {
 
   const loadNewOperations = async () => {
     try {
-      console.log('getting');
       const response = await axios.get(
         routes.newOperationsPath(lastRevisionIndex.current),
       );
-      console.log('got');
       const revisions = response.data;
       if (revisions.length > 0) {
         lastRevisionIndex.current = revisions[revisions.length - 1].index;
@@ -141,7 +146,14 @@ const App = ({ clientId, initialText, initialRevisionIndex }) => {
       <div className="border border-secondary bg-white">
         <Editor text={editorText} onChange={handleChange} />
       </div>
-      <button onClick={loadNewOperations}>Load new operations</button>
+      <button onClick={onNewDocument}>
+        <a href={`../${newDocumentId}`} target="_blank" rel="noreferrer">
+          New document
+        </a>
+      </button>
+      <CopyToClipboard text={window.location.href}>
+        <button>Copy link</button>
+      </CopyToClipboard>
     </>
   );
 };

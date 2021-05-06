@@ -6,6 +6,7 @@ import fastify from 'fastify';
 import pointOfView from 'point-of-view';
 import fastifyStatic from 'fastify-static';
 import _ from 'lodash';
+import { v4 as uuidV4 } from 'uuid';
 import {
   composeOperations,
   transform,
@@ -64,6 +65,11 @@ export default () => {
 
   app
     .get('/', (_req, reply) => {
+      reply.redirect(`/${uuidV4()}`);
+    })
+    .get('/:documentId', (req, reply) => {
+      const documentId = req.params.documentId;
+      console.log('docId:', documentId);
       reply.view('index.pug', {
         gon: {
           clientId: _.uniqueId(),
