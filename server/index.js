@@ -68,7 +68,7 @@ const makeRevision = (operation, clientId, index) => {
 };
 
 export default () => {
-  const app = fastify({ logger: true, prettyPrint: true });
+  const app = fastify({ logger: false, prettyPrint: true });
 
   setUpViews(app);
   setUpStaticAssets(app);
@@ -87,9 +87,12 @@ export default () => {
 
   app
     .get('/', (_req, reply) => {
-      reply.redirect(`/${uuidV4()}`);
+      reply.redirect(`/documents/${uuidV4()}`);
     })
-    .get('/:documentId', async (req, reply) => {
+    .get('/demo', (req, reply) => {
+      reply.redirect('/documents/demo');
+    })
+    .get('/documents/:documentId', async (req, reply) => {
       const documentId = req.params.documentId;
       if (!Object.keys(documents).includes(documentId)) {
         documents[documentId] = {
@@ -115,7 +118,7 @@ export default () => {
         const documentId = req.params.documentId;
         const state = documents[documentId];
         if (!state) {
-          reply.redirect(`/api/v1/${documentId}`);
+          reply.redirect(`/api/v1/documents/${documentId}`);
           return;
         }
         const lastRevisionIndex = Number(req.params.lastRevisionIndex);
@@ -127,7 +130,7 @@ export default () => {
       const documentId = req.params.documentId;
       const state = documents[documentId];
       if (!state) {
-        reply.redirect(`/api/v1/${documentId}`);
+        reply.redirect(`/api/v1/documents/${documentId}`);
         return;
       }
       const { operation, clientId, syncIndex } = req.body;

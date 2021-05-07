@@ -31,8 +31,13 @@ export const withRetryHandling = (callback, delay = 400) =>
     return retry();
   };
 
-const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
-  console.log(documentId);
+const App = ({
+  clientId,
+  documentId,
+  initialText,
+  initialRevisionIndex,
+  mode = 'default',
+}) => {
   const text = useRef(initialText);
   const awaited = useRef(makeOperation());
   const buffered = useRef(makeOperation());
@@ -41,6 +46,10 @@ const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
 
   const [editorText, setEditorText] = useState(initialText);
   const [newDocumentId, setNewDocumentId] = useState(uuidV4());
+
+  const demoToSend = useRef(makeOperation());
+  const [demoAlreadySent, setDemoAlreadySent] = useState(true);
+  const [demoLogs, setDemoLogs] = useState('');
 
   const onNewDocument = () => {
     setNewDocumentId(uuidV4());
@@ -81,6 +90,14 @@ const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
       if (revisions.length > 0) {
         lastRevisionIndex.current = revisions[revisions.length - 1].index;
       }
+      if (mode === 'demo') {
+        setDemoLogs(
+          `Received operations ${revisions.map((rev) =>
+            toStringOperation(rev.operation),
+          )}`,
+        );
+      }
+
       console.log(revisions);
       revisions.forEach(processRevision);
       printState();
@@ -90,6 +107,9 @@ const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
   };
 
   useEffect(async () => {
+    if (mode === 'demo') {
+      return;
+    }
     while (true) {
       await loadNewOperations();
       await new Promise((res) => setTimeout(res, RETRY_INTERVAL));
@@ -103,7 +123,13 @@ const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
     text.current = apply(text.current, operation);
     if (awaited.current.length === 0) {
       awaited.current = operation;
-      sendOperation(operation, clientId, syncIndex.current);
+      if (mode === 'default') {
+        sendOperation(operation, clientId, syncIndex.current);
+      }
+      if (mode === 'demo') {
+        demoToSend.current = operation;
+        setDemoAlreadySent(false);
+      }
       //socket.emit('user-input', { operation, clientId, syncIndex });
     } else {
       buffered.current = composeOperations(buffered.current, operation);
@@ -119,7 +145,13 @@ const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
       awaited.current = buffered.current;
       buffered.current = makeOperation();
       if (awaited.current.length !== 0) {
-        sendOperation(awaited.current, clientId, syncIndex.current);
+        if (mode === 'default') {
+          sendOperation(awaited.current, clientId, syncIndex.current);
+        }
+        if (mode === 'demo') {
+          demoToSend.current = awaited.current;
+          setDemoAlreadySent(false);
+        }
       }
     } else {
       const [operTransformedOnce, transformedAwaited] = transform(
@@ -141,6 +173,26 @@ const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
     }
   };
 
+  const handleSend = () => {
+    sendOperation(awaited.current, clientId, syncIndex.current);
+    setDemoAlreadySent(true);
+    setDemoLogs(`Sent operation ${toStringOperation(awaited.current)}`);
+  };
+
+  const handleReceive = () => {
+    loadNewOperations();
+  };
+
+  const demoModeJSX = (
+    <div>
+      <button onClick={handleSend} disabled={demoAlreadySent}>
+        Send
+      </button>
+      <button onClick={handleReceive}>Receive</button>
+      <div>{demoLogs}</div>
+    </div>
+  );
+
   return (
     <>
       <h1 className="text-center pb-3 pt-3">Operpad</h1>
@@ -148,13 +200,18 @@ const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
         <Editor text={editorText} onChange={handleChange} />
       </div>
       <button onClick={onNewDocument}>
-        <a href={`../${newDocumentId}`} target="_blank" rel="noreferrer">
+        <a
+          href={`../documents/${newDocumentId}`}
+          target="_blank"
+          rel="noreferrer"
+        >
           New document
         </a>
       </button>
       <CopyToClipboard text={window.location.href}>
         <button>Copy link</button>
       </CopyToClipboard>
+      {mode === 'demo' ? demoModeJSX : null}
     </>
   );
 };

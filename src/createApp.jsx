@@ -9,5 +9,6 @@ export default () => (
     documentId={gon.documentId}
     initialText={gon.text}
     initialRevisionIndex={gon.revisionIndex}
+    mode={gon.documentId === 'demo' ? 'demo' : 'default'}
   />
 );
