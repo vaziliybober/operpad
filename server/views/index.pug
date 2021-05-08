@@ -5,7 +5,5 @@ html.h-100(lang="en")
     link(href=assetPath('main.css') rel="stylesheet")
     script.
       var gon = !{JSON.stringify(gon)};
-  body.d-flex.flex-column.h-100
-    .container.h-100.overflow-hidden.p-3
-      .h-100#root
+  body#root
     script(src=assetPath('main.js'))

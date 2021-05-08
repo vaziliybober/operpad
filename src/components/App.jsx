@@ -1,21 +1,16 @@
+/* eslint-disable no-await-in-loop */
 import React, { useState, useRef, useEffect } from 'react';
-import Editor from './Editor.jsx';
-import useSocket from '../hooks/useSocket.js';
-import useInterval from '../hooks/useInterval.js';
 import axios from 'axios';
-import makeOperation, {
-  toStringOperation,
-  composeOperations,
-  transform,
-  apply,
-} from '../lib/operation.js';
-import routes from '../routes.js';
+
 import { v4 as uuidV4 } from 'uuid';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
+import ot from '@vaziliybober/operlib';
+import routes from '../routes.js';
+import Editor from './Editor.jsx';
 
 const RETRY_INTERVAL = 300;
 
-export const withRetryHandling = (callback, delay = 400) =>
+const withRetryHandling = (callback, delay = 400) =>
   function callbackWithRetryHandling(...params) {
     const retry = async (attempt = 1) => {
       try {
@@ -31,6 +26,16 @@ export const withRetryHandling = (callback, delay = 400) =>
     return retry();
   };
 
+const sendOperation = (operation, clientId, documentId, syncIndex) => {
+  withRetryHandling(async () => {
+    await axios.post(routes.userInputPath(documentId), {
+      operation,
+      clientId,
+      syncIndex,
+    });
+  }, RETRY_INTERVAL)();
+};
+
 const App = ({
   clientId,
   documentId,
@@ -39,30 +44,20 @@ const App = ({
   mode = 'default',
 }) => {
   const text = useRef(initialText);
-  const awaited = useRef(makeOperation());
-  const buffered = useRef(makeOperation());
+  const awaited = useRef(ot.make());
+  const buffered = useRef(ot.make());
   const syncIndex = useRef(initialRevisionIndex);
   const lastRevisionIndex = useRef(initialRevisionIndex);
 
   const [editorText, setEditorText] = useState(initialText);
   const [newDocumentId, setNewDocumentId] = useState(uuidV4());
 
-  const demoToSend = useRef(makeOperation());
+  const demoToSend = useRef(ot.make());
   const [demoAlreadySent, setDemoAlreadySent] = useState(true);
   const [demoLogs, setDemoLogs] = useState('');
 
   const onNewDocument = () => {
     setNewDocumentId(uuidV4());
-  };
-
-  const sendOperation = (operation, clientId, syncIndex) => {
-    withRetryHandling(async () => {
-      await axios.post(routes.userInputPath(documentId), {
-        operation,
-        clientId,
-        syncIndex,
-      });
-    }, RETRY_INTERVAL)();
   };
 
   // useEffect(() => {
@@ -81,6 +76,46 @@ const App = ({
     });
   };
 
+  const processRevision = ({ operation, clientId: originClientId, index }) => {
+    const acknowledgedOwnOperation = originClientId === clientId;
+    syncIndex.current = index;
+    if (acknowledgedOwnOperation) {
+      awaited.current = buffered.current;
+      buffered.current = ot.make();
+      if (awaited.current.length !== 0) {
+        if (mode === 'default') {
+          sendOperation(
+            awaited.current,
+            clientId,
+            documentId,
+            syncIndex.current,
+          );
+        }
+        if (mode === 'demo') {
+          demoToSend.current = awaited.current;
+          setDemoAlreadySent(false);
+        }
+      }
+    } else {
+      const [operTransformedOnce, transformedAwaited] = ot.transform(
+        operation,
+        awaited.current,
+      );
+
+      const [operTransformedTwice, transformedBuffered] = ot.transform(
+        operTransformedOnce,
+        buffered.current,
+      );
+
+      const newText = ot.apply(text.current, operTransformedTwice);
+      setEditorText(newText);
+      text.current = newText;
+
+      awaited.current = transformedAwaited;
+      buffered.current = transformedBuffered;
+    }
+  };
+
   const loadNewOperations = async () => {
     try {
       const response = await axios.get(
@@ -93,7 +128,7 @@ const App = ({
       if (mode === 'demo') {
         setDemoLogs(
           `Received operations ${revisions.map((rev) =>
-            toStringOperation(rev.operation),
+            ot.toString(rev.operation),
           )}`,
         );
       }
@@ -110,73 +145,37 @@ const App = ({
     if (mode === 'demo') {
       return;
     }
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       await loadNewOperations();
       await new Promise((res) => setTimeout(res, RETRY_INTERVAL));
     }
   }, []);
 
-  //useInterval(loadNewOperations, RETRY_INTERVAL);
-
   const handleChange = (operation) => {
-    // console.log('User input operation detected:', toStringOperation(operation));
-    text.current = apply(text.current, operation);
+    // console.log('User input operation detected:', ot.toString(operation));
+    text.current = ot.apply(text.current, operation);
     if (awaited.current.length === 0) {
       awaited.current = operation;
       if (mode === 'default') {
-        sendOperation(operation, clientId, syncIndex.current);
+        sendOperation(operation, clientId, documentId, syncIndex.current);
       }
       if (mode === 'demo') {
         demoToSend.current = operation;
         setDemoAlreadySent(false);
       }
-      //socket.emit('user-input', { operation, clientId, syncIndex });
+      // socket.emit('user-input', { operation, clientId, syncIndex });
     } else {
-      buffered.current = composeOperations(buffered.current, operation);
+      buffered.current = ot.compose(buffered.current, operation);
     }
 
     printState();
   };
 
-  const processRevision = ({ operation, clientId: originClientId, index }) => {
-    const acknowledgedOwnOperation = originClientId === clientId;
-    syncIndex.current = index;
-    if (acknowledgedOwnOperation) {
-      awaited.current = buffered.current;
-      buffered.current = makeOperation();
-      if (awaited.current.length !== 0) {
-        if (mode === 'default') {
-          sendOperation(awaited.current, clientId, syncIndex.current);
-        }
-        if (mode === 'demo') {
-          demoToSend.current = awaited.current;
-          setDemoAlreadySent(false);
-        }
-      }
-    } else {
-      const [operTransformedOnce, transformedAwaited] = transform(
-        operation,
-        awaited.current,
-      );
-
-      const [operTransformedTwice, transformedBuffered] = transform(
-        operTransformedOnce,
-        buffered.current,
-      );
-
-      const newText = apply(text.current, operTransformedTwice);
-      setEditorText(newText);
-      text.current = newText;
-
-      awaited.current = transformedAwaited;
-      buffered.current = transformedBuffered;
-    }
-  };
-
   const handleSend = () => {
     sendOperation(awaited.current, clientId, syncIndex.current);
     setDemoAlreadySent(true);
-    setDemoLogs(`Sent operation ${toStringOperation(awaited.current)}`);
+    setDemoLogs(`Sent operation ${ot.toString(awaited.current)}`);
   };
 
   const handleReceive = () => {
@@ -185,10 +184,12 @@ const App = ({
 
   const demoModeJSX = (
     <div>
-      <button onClick={handleSend} disabled={demoAlreadySent}>
+      <button type="button" onClick={handleSend} disabled={demoAlreadySent}>
         Send
       </button>
-      <button onClick={handleReceive}>Receive</button>
+      <button type="button" onClick={handleReceive}>
+        Receive
+      </button>
       <div>{demoLogs}</div>
     </div>
   );
@@ -199,7 +200,7 @@ const App = ({
       <div className="border border-secondary bg-white">
         <Editor text={editorText} onChange={handleChange} />
       </div>
-      <button onClick={onNewDocument}>
+      <button type="button" onClick={onNewDocument}>
         <a
           href={`../documents/${newDocumentId}`}
           target="_blank"
@@ -209,7 +210,7 @@ const App = ({
         </a>
       </button>
       <CopyToClipboard text={window.location.href}>
-        <button>Copy link</button>
+        <button type="button">Copy link</button>
       </CopyToClipboard>
       {mode === 'demo' ? demoModeJSX : null}
     </>

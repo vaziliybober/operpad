@@ -1,19 +1,13 @@
 import 'regenerator-runtime/runtime';
 import path from 'path';
 import Pug from 'pug';
-import socketio from 'socket.io';
 import fastify from 'fastify';
 import pointOfView from 'point-of-view';
 import fastifyStatic from 'fastify-static';
 import _ from 'lodash';
 import { v4 as uuidV4 } from 'uuid';
-import {
-  composeOperations,
-  transform,
-  apply,
-  toStringOperation,
-} from './lib/operation.js';
 import mongoose from 'mongoose';
+import ot from '@vaziliybober/operlib';
 import Document from './DocumentSchema.js';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost/operpad';
@@ -35,7 +29,7 @@ const findOrCreateDocument = async (id) => {
     return document;
   }
 
-  return await Document.create({ _id: id, data: DEFAULT_DATA_VALUE });
+  return Document.create({ _id: id, data: DEFAULT_DATA_VALUE });
 };
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -63,12 +57,14 @@ const setUpStaticAssets = (app) => {
   });
 };
 
-const makeRevision = (operation, clientId, index) => {
-  return { operation, clientId, index };
-};
+const makeRevision = (operation, clientId, index) => ({
+  operation,
+  clientId,
+  index,
+});
 
 export default () => {
-  const app = fastify({ logger: false, prettyPrint: true });
+  const app = fastify({ logger: true, prettyPrint: true });
 
   setUpViews(app);
   setUpStaticAssets(app);
@@ -80,7 +76,7 @@ export default () => {
     console.log('text:', state.text);
     state.revisions.forEach(({ operation, clientId, index }) => {
       console.log(`${index}. clientId: ${clientId}`);
-      console.log(toStringOperation(operation));
+      console.log(ot.toString(operation));
     });
     console.log('------------------');
   };
@@ -93,7 +89,7 @@ export default () => {
       reply.redirect('/documents/demo');
     })
     .get('/documents/:documentId', async (req, reply) => {
-      const documentId = req.params.documentId;
+      const { documentId } = req.params;
       if (!Object.keys(documents).includes(documentId)) {
         documents[documentId] = {
           text: (await findOrCreateDocument(documentId)).data,
@@ -101,7 +97,7 @@ export default () => {
         };
       }
       const state = documents[documentId];
-      //console.log('state:', state);
+      // console.log('state:', state);
 
       reply.view('index.pug', {
         gon: {
@@ -115,7 +111,7 @@ export default () => {
     .get(
       '/api/v1/newOperations/:documentId/:lastRevisionIndex',
       (req, reply) => {
-        const documentId = req.params.documentId;
+        const { documentId } = req.params;
         const state = documents[documentId];
         if (!state) {
           reply.redirect(`/api/v1/documents/${documentId}`);
@@ -127,7 +123,8 @@ export default () => {
       },
     )
     .post('/api/v1/userInput/:documentId', async (req, reply) => {
-      const documentId = req.params.documentId;
+      const { documentId } = req.params;
+      console.log(documentId);
       const state = documents[documentId];
       if (!state) {
         reply.redirect(`/api/v1/documents/${documentId}`);
@@ -135,17 +132,17 @@ export default () => {
       }
       const { operation, clientId, syncIndex } = req.body;
       const unsyncedRevisions = state.revisions.slice(syncIndex + 1);
-      const serverOperation = composeOperations(
+      const serverOperation = ot.compose(
         ...unsyncedRevisions.map((rev) => rev.operation),
       );
-      const [, transformedOperation] = transform(serverOperation, operation);
+      const [, transformedOperation] = ot.transform(serverOperation, operation);
       const newRevision = makeRevision(
         transformedOperation,
         clientId,
         state.revisions.length,
       );
       state.revisions.push(newRevision);
-      state.text = apply(state.text, transformedOperation);
+      state.text = ot.apply(state.text, transformedOperation);
       printState(documentId, state);
       Document.findByIdAndUpdate(documentId, { data: state.text }).exec();
       reply.code(201);

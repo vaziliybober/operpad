@@ -1,7 +1,6 @@
 import React from 'react';
 import { UnControlled as CodeMirror } from 'react-codemirror17';
-import makeAtomicOperation from '../../server/lib/atomicOperation.js';
-import makeOperation from '../lib/operation.js';
+import ot from '@vaziliybober/operlib';
 
 const CODE_MIRROR_CONFIG = {
   configureMouse: () => ({ addNew: false }),
@@ -29,23 +28,23 @@ const Editor = ({ text = '', onChange }) => {
     const buildRemoveAtomic = () => {
       const length =
         findSum(removed.map((r) => r.length)) + (removed.length - 1);
-      return makeAtomicOperation('remove', { pos, length });
+      return ot.makeAtomic('remove', { pos, length });
     };
 
     const buildInsertAtomic = () => {
       const content = inserted.join('\n');
-      return makeAtomicOperation('insert', { pos, content });
+      return ot.makeAtomic('insert', { pos, content });
     };
 
     const buildOperation = () => {
       if (somethingWasRemoved && somethingWasInserted) {
-        return makeOperation(buildRemoveAtomic(), buildInsertAtomic());
+        return ot.make(buildRemoveAtomic(), buildInsertAtomic());
       }
       if (somethingWasRemoved) {
-        return makeOperation(buildRemoveAtomic());
+        return ot.make(buildRemoveAtomic());
       }
       if (somethingWasInserted) {
-        return makeOperation(buildInsertAtomic());
+        return ot.make(buildInsertAtomic());
       }
       throw new Error('Unexpected behaviour: Nothing was removed or inserted!');
     };

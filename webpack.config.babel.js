@@ -1,6 +1,5 @@
 import path from 'path';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
-import Dotenv from 'dotenv-webpack';
 
 const mode = process.env.NODE_ENV || 'development';
 
@@ -26,13 +25,7 @@ module.exports = {
       ignored: '**/node_modules/**',
     },
   },
-  plugins: [
-    new MiniCssExtractPlugin(),
-    // new webpack.EnvironmentPlugin({
-    //   ROLLBAR_ACCESS_TOKEN: '9fd42b56bd4e4003aebf42e15e27d794',
-    // }),
-    new Dotenv(),
-  ],
+  plugins: [new MiniCssExtractPlugin()],
   module: {
     rules: [
       {

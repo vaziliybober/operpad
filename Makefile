@@ -15,15 +15,6 @@ install-deps:
 build:
 	npm run build
 
-test:
-	npm test -s
-
-ftest:
-	npm run ftest -s
-
-test-coverage:
-	npm test -- --coverage --coverageProvider=v8
-
 lint:
 	npx eslint . --ext js,jsx
 
