@@ -5,6 +5,7 @@ import axios from 'axios';
 import { v4 as uuidV4 } from 'uuid';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import ot from '@vaziliybober/operlib';
+import { Container, Row, Col, Button, Jumbotron } from 'react-bootstrap';
 import routes from '../routes.js';
 import Editor from './Editor.jsx';
 
@@ -173,7 +174,7 @@ const App = ({
   };
 
   const handleSend = () => {
-    sendOperation(awaited.current, clientId, syncIndex.current);
+    sendOperation(awaited.current, clientId, documentId, syncIndex.current);
     setDemoAlreadySent(true);
     setDemoLogs(`Sent operation ${ot.toString(awaited.current)}`);
   };
@@ -196,23 +197,37 @@ const App = ({
 
   return (
     <>
-      <h1 className="text-center pb-3 pt-3">Operpad</h1>
-      <div className="border border-secondary bg-white">
-        <Editor text={editorText} onChange={handleChange} />
-      </div>
-      <button type="button" onClick={onNewDocument}>
-        <a
-          href={`../documents/${newDocumentId}`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          New document
-        </a>
-      </button>
-      <CopyToClipboard text={window.location.href}>
-        <button type="button">Copy link</button>
-      </CopyToClipboard>
-      {mode === 'demo' ? demoModeJSX : null}
+      <Jumbotron className="bg-dark">
+        <h1 className="text-center text-white mb-3">Operpad</h1>
+        <div className="text-center">
+          <Button
+            className="shadow-none border-light mr-3 ml-auto"
+            variant="dark"
+            target="_blank"
+            href={`../documents/${newDocumentId}`}
+            onClick={onNewDocument}
+          >
+            New document
+          </Button>
+          <CopyToClipboard text={window.location.href}>
+            <Button className="shadow-none border-light" variant="dark">
+              Copy link
+            </Button>
+          </CopyToClipboard>
+        </div>
+      </Jumbotron>
+      <Container>
+        <Row>
+          <Col className="d-flex justify-content-center pb-3 pt-3 ml-auto">
+            {mode === 'demo' ? demoModeJSX : null}
+          </Col>
+        </Row>
+        <Row>
+          <Col className="border border-dark p-0">
+            <Editor text={editorText} onChange={handleChange} />
+          </Col>
+        </Row>
+      </Container>
     </>
   );
 };
