@@ -64,7 +64,7 @@ const makeRevision = (operation, clientId, index) => ({
 });
 
 export default () => {
-  const app = fastify({ logger: true, prettyPrint: true });
+  const app = fastify({ logger: false, prettyPrint: true });
 
   setUpViews(app);
   setUpStaticAssets(app);
