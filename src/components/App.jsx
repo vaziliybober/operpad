@@ -12,6 +12,11 @@ import routes from '../routes.js';
 
 const RETRY_INTERVAL = 300;
 
+function sleep(delay) {
+  const start = new Date().getTime();
+  while (new Date().getTime() < start + delay);
+}
+
 const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
   const [text, setText] = React.useState(initialText);
   const [awaited, setAwaited] = React.useState(ot.make());
@@ -57,7 +62,7 @@ const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
   }, [revisions]);
 
   React.useEffect(async () => {
-    if (revisions.length > 0) {
+    if (state === 'revising') {
       return;
     }
 
@@ -77,10 +82,10 @@ const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
         console.log("Couldn't load new operations", e);
       }
     }
-  }, [revisions]);
+  }, [state]);
 
   React.useEffect(() => {
-    if (revisions.length === 0) {
+    if (state === 'editing' || revisions.length === 0) {
       return;
     }
 
@@ -110,7 +115,7 @@ const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
     }
 
     setRevisions((prevRevisions) => prevRevisions.slice(1));
-  }, [revisions]);
+  }, [revisions, state]);
 
   return (
     <>
@@ -128,11 +133,7 @@ const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
       <Container className="mb-5">
         <Row className="mb-3">
           <Col className="border border-dark p-0">
-            <Editor
-              text={text}
-              disabled={state === 'revising'}
-              onUserInput={handleUserInput}
-            />
+            <Editor text={text} onUserInput={handleUserInput} />
           </Col>
         </Row>
         {/* <Row className="mb-3 justify-content-center">
