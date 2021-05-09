@@ -1,68 +1,47 @@
 import React from 'react';
-import { UnControlled as CodeMirror } from 'react-codemirror17';
 import ot from '@vaziliybober/operlib';
+import { diffChars } from 'diff';
 
-const CODE_MIRROR_CONFIG = {
-  configureMouse: () => ({ addNew: false }),
-};
+const Editor = ({ text, onUserInput }) => {
+  const [isUserInput, setIsUserInput] = React.useState(false);
+  const cursor = React.useRef();
+  const textareaRef = React.useRef();
 
-const findSum = (numbers) => numbers.reduce((a, b) => a + b, 0);
-
-const Editor = ({ text = '', onChange }) => {
-  const handleChange = (editor, change) => {
-    if (!change.origin) {
+  React.useEffect(() => {
+    if (isUserInput) {
+      setIsUserInput(false);
       return;
     }
 
-    const { lines } = editor.doc.children[0];
+    textareaRef.current.selectionStart = cursor.current;
+    textareaRef.current.selectionEnd = cursor.current;
+    console.log(cursor);
+  }, [text]);
 
-    const pos =
-      findSum(
-        lines.slice(0, change.from.line).map((line) => line.text.length + 1),
-      ) + change.from.ch;
-
-    const { removed, text: inserted } = change;
-    const somethingWasRemoved = !(removed.length === 1 && removed[0] === '');
-    const somethingWasInserted = !(inserted.length === 1 && inserted[0] === '');
-
-    const buildRemoveAtomic = () => {
-      const length =
-        findSum(removed.map((r) => r.length)) + (removed.length - 1);
-      return ot.makeAtomic('remove', { pos, length });
-    };
-
-    const buildInsertAtomic = () => {
-      const content = inserted.join('\n');
-      return ot.makeAtomic('insert', { pos, content });
-    };
-
-    const buildOperation = () => {
-      if (somethingWasRemoved && somethingWasInserted) {
-        return ot.make(buildRemoveAtomic(), buildInsertAtomic());
-      }
-      if (somethingWasRemoved) {
-        return ot.make(buildRemoveAtomic());
-      }
-      if (somethingWasInserted) {
-        return ot.make(buildInsertAtomic());
-      }
-      throw new Error('Unexpected behaviour: Nothing was removed or inserted!');
-    };
-
-    const operation = buildOperation();
-
-    if (onChange) {
-      onChange(operation);
-    }
+  const handleChange = (e) => {
+    //console.log(text, e.target.value);
+    // const diff = diffChars(text, e.target.value);
+    //console.log(diff);
+    // console.log(e.target.selectionStart, e.target.selectionEnd);
+    // e.target.selectionStart -= 1;
+    // e.target.selectionEnd -= 1;
+    setIsUserInput(true);
+    cursor.current = e.target.selectionStart;
+    onUserInput(e.target.value);
   };
 
   return (
-    <CodeMirror
-      options={CODE_MIRROR_CONFIG}
-      autoCursor={false}
-      onChange={handleChange}
-      value={text}
-    />
+    <>
+      <textarea
+        ref={textareaRef}
+        className="w-100"
+        onClick={(e) => {
+          cursor.current = e.target.selectionStart;
+        }}
+        onChange={handleChange}
+        value={text}
+      />
+    </>
   );
 };
 
