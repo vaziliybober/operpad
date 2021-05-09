@@ -12,11 +12,6 @@ import routes from '../routes.js';
 
 const RETRY_INTERVAL = 300;
 
-function sleep(delay) {
-  const start = new Date().getTime();
-  while (new Date().getTime() < start + delay);
-}
-
 const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
   const [text, setText] = React.useState(initialText);
   const [awaited, setAwaited] = React.useState(ot.make());
