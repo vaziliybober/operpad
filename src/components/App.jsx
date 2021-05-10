@@ -43,6 +43,7 @@ const App = ({
   const [buffered, setBuffered] = React.useState(ot.make());
   const [revisions, setRevisions] = React.useState([]);
   const [state, setState] = React.useState('editing');
+  const [isLoading, setIsLoading] = React.useState(false);
   const [syncIndex, setSyncIndex] = React.useState(initialRevisionIndex);
   const [lastRevisionIndex, setLastRevisionIndex] = React.useState(
     initialRevisionIndex,
@@ -68,7 +69,7 @@ const App = ({
   };
 
   const loadRevisions = async () => {
-    setState('loading');
+    setIsLoading(true);
     while (true) {
       try {
         const response = await axios.get(
@@ -79,6 +80,7 @@ const App = ({
           setLastRevisionIndex(newRevisions[newRevisions.length - 1].index);
           setRevisions(newRevisions);
           addToHistory(makeLoaded(newRevisions));
+          setIsLoading(false);
           break;
         }
         await new Promise((res) => setTimeout(res, RETRY_INTERVAL));
@@ -166,6 +168,7 @@ const App = ({
 
   React.useEffect(async () => {
     if (mode === 'default' && state !== 'revising') {
+      console.log('here');
       await loadRevisions();
     }
   }, [state]);
@@ -206,7 +209,7 @@ const App = ({
             Load
           </Button>
 
-          {state === 'loading' ? (
+          {isLoading ? (
             <Spinner animation="border" role="status">
               <span className="sr-only">Loading...</span>
             </Spinner>
