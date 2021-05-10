@@ -1,18 +1,42 @@
 /* eslint-disable no-constant-condition */
 /* eslint-disable no-await-in-loop */
 import React from 'react';
-import { Container, Row, Col, Button, Jumbotron } from 'react-bootstrap';
+import {
+  Container,
+  Row,
+  Col,
+  Button,
+  Jumbotron,
+  Spinner,
+} from 'react-bootstrap';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import ot from '@vaziliybober/operlib';
 import axios from 'axios';
+import { Check2 } from 'react-bootstrap-icons';
+import { Fade } from 'react-awesome-reveal';
 import NewDocumentButton from './NewDocumentButton.jsx';
 import Editor from './Editor.jsx';
 import { withRetry } from '../lib/index.js';
 import routes from '../routes.js';
+import History from './History.jsx';
+import {
+  makeInitial,
+  makeSent,
+  makeLoaded,
+  makeRevised,
+  makeAcknowledged,
+  makeEdited,
+} from '../lib/actions.jsx';
 
 const RETRY_INTERVAL = 300;
 
-const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
+const App = ({
+  clientId,
+  documentId,
+  initialText,
+  initialRevisionIndex,
+  mode = 'default',
+}) => {
   const [text, setText] = React.useState(initialText);
   const [awaited, setAwaited] = React.useState(ot.make());
   const [operToSend, setOperToSend] = React.useState(ot.make());
@@ -23,8 +47,13 @@ const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
   const [lastRevisionIndex, setLastRevisionIndex] = React.useState(
     initialRevisionIndex,
   );
+  const [history, setHistory] = React.useState([makeInitial()]);
 
-  React.useEffect(() => {
+  const addToHistory = (action) => {
+    setHistory((prevHistory) => [...prevHistory, action]);
+  };
+
+  const sendOperation = () => {
     const sendWithRetry = withRetry(async () => {
       await axios.post(routes.userInputPath(documentId), {
         operation: operToSend,
@@ -33,37 +62,15 @@ const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
       });
     }, RETRY_INTERVAL);
 
-    if (operToSend.length !== 0) {
-      sendWithRetry();
-    }
-  }, [operToSend]);
-
-  const handleUserInput = (operation) => {
-    setText((prevText) => ot.apply(prevText, operation));
-    if (awaited.length === 0) {
-      setAwaited(operation);
-      setOperToSend(operation);
-    } else {
-      setBuffered((prevBuffered) => ot.compose(prevBuffered, operation));
-    }
+    addToHistory(makeSent(operToSend, awaited, buffered));
+    sendWithRetry();
+    setOperToSend(ot.make());
   };
 
-  React.useEffect(() => {
-    if (revisions.length === 0) {
-      setState('editing');
-    } else {
-      setState('revising');
-    }
-  }, [revisions]);
-
-  React.useEffect(async () => {
-    if (state === 'revising') {
-      return;
-    }
-
+  const loadRevisions = async () => {
+    setState('loading');
     while (true) {
       try {
-        await new Promise((res) => setTimeout(res, RETRY_INTERVAL));
         const response = await axios.get(
           routes.newOperationsPath(documentId, lastRevisionIndex),
         );
@@ -71,19 +78,17 @@ const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
         if (newRevisions.length > 0) {
           setLastRevisionIndex(newRevisions[newRevisions.length - 1].index);
           setRevisions(newRevisions);
+          addToHistory(makeLoaded(newRevisions));
           break;
         }
+        await new Promise((res) => setTimeout(res, RETRY_INTERVAL));
       } catch (e) {
         console.log("Couldn't load new operations", e);
       }
     }
-  }, [state]);
+  };
 
-  React.useEffect(() => {
-    if (state === 'editing' || revisions.length === 0) {
-      return;
-    }
-
+  const revise = () => {
     const { operation, clientId: originClientId, index } = revisions[0];
     setSyncIndex(index);
 
@@ -93,6 +98,7 @@ const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
       setAwaited(buffered);
       setOperToSend(buffered);
       setBuffered(ot.make());
+      addToHistory(makeAcknowledged(awaited));
     } else {
       const [operTransformedOnce, transformedAwaited] = ot.transform(
         operation,
@@ -104,13 +110,120 @@ const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
         buffered,
       );
 
-      setText((prevText) => ot.apply(prevText, operTransformedTwice));
+      const newText = ot.apply(text, operTransformedTwice);
+      setText(newText);
       setAwaited(transformedAwaited);
       setBuffered(transformedBuffered);
+      addToHistory(
+        makeRevised(
+          operation,
+          operTransformedTwice,
+          awaited,
+          transformedAwaited,
+          buffered,
+          transformedBuffered,
+          text,
+          newText,
+        ),
+      );
     }
 
     setRevisions((prevRevisions) => prevRevisions.slice(1));
+  };
+
+  const handleUserInput = (operation) => {
+    const newText = ot.apply(text, operation);
+    let hAwaited = awaited;
+    let hBuffered = buffered;
+    setText(newText);
+    if (awaited.length === 0) {
+      setAwaited(operation);
+      hAwaited = operation;
+      setOperToSend(operation);
+    } else {
+      const newBuffered = ot.compose(buffered, operation);
+      setBuffered(newBuffered);
+      hBuffered = newBuffered;
+    }
+
+    addToHistory(makeEdited(operation, hAwaited, hBuffered, text, newText));
+  };
+
+  React.useEffect(() => {
+    if (revisions.length === 0) {
+      setState('editing');
+    } else {
+      setState('revising');
+      console.log('here');
+    }
+  }, [revisions]);
+
+  React.useEffect(() => {
+    if (mode === 'default' && operToSend.length > 0) {
+      sendOperation();
+    }
+  }, [operToSend]);
+
+  React.useEffect(async () => {
+    if (mode === 'default' && state !== 'revising') {
+      await loadRevisions();
+    }
+  }, [state]);
+
+  React.useEffect(() => {
+    if (mode === 'default' && state !== 'editing' && revisions.length > 0) {
+      revise();
+    }
   }, [revisions, state]);
+
+  const demoModeJSX = (
+    <>
+      <Row className="mb-3">
+        <Col className="d-flex align-items-center">
+          <Button
+            className="border-dark mr-3"
+            variant="light"
+            onClick={() => sendOperation()}
+            disabled={operToSend.length === 0}
+          >
+            Send
+          </Button>
+
+          <Button
+            className="border-dark mr-3"
+            variant="light"
+            onClick={() => revise()}
+            disabled={state === 'editing' || revisions.length === 0}
+          >
+            Receive
+          </Button>
+          <Button
+            className="border-dark mr-3"
+            variant="light"
+            onClick={() => loadRevisions()}
+            disabled={state === 'revising'}
+          >
+            Load
+          </Button>
+
+          {state === 'loading' ? (
+            <Spinner animation="border" role="status">
+              <span className="sr-only">Loading...</span>
+            </Spinner>
+          ) : (
+            <Fade>
+              <Check2 size={30} />
+            </Fade>
+          )}
+        </Col>
+      </Row>
+      <Row>
+        <Col>
+          <History history={history} />
+        </Col>
+      </Row>
+    </>
+  );
 
   return (
     <>
@@ -119,7 +232,7 @@ const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
         <div className="text-center">
           <NewDocumentButton />
           <CopyToClipboard text={window.location.href}>
-            <Button className="shadow-none border-light" variant="dark">
+            <Button className="border-light" variant="dark">
               Copy link
             </Button>
           </CopyToClipboard>
@@ -128,19 +241,14 @@ const App = ({ clientId, documentId, initialText, initialRevisionIndex }) => {
       <Container className="mb-5">
         <Row className="mb-3">
           <Col className="border border-dark p-0">
-            <Editor text={text} onUserInput={handleUserInput} />
+            <Editor
+              text={text}
+              onUserInput={handleUserInput}
+              disabled={state === 'revising'}
+            />
           </Col>
         </Row>
-        {/* <Row className="mb-3 justify-content-center">
-          <Col>
-            <Button className="border-dark mr-3" variant="light">
-              Send
-            </Button>
-            <Button className="border-dark" variant="light">
-              Receive
-            </Button>
-          </Col>
-        </Row> */}
+        {mode === 'demo' ? demoModeJSX : null}
       </Container>
     </>
   );
