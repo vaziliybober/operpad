@@ -56,7 +56,6 @@ const App = ({
 
   const sendOperation = () => {
     const sendWithRetry = withRetry(async () => {
-      console.log('retrying');
       await axios.post(routes.userInputPath(documentId), {
         operation: operToSend,
         clientId,
@@ -116,15 +115,19 @@ const App = ({
       const newText = ot.apply(text, operTransformedTwice);
       setText(newText);
       setAwaited(transformedAwaited);
+      setOperToSend(transformedAwaited);
       setBuffered(transformedBuffered);
       addToHistory(makeRevised(operation, operTransformedTwice));
+      console.log('awaited:', awaited);
+      console.log('transformedAwaited:', transformedAwaited);
+      console.log('buffered:', buffered);
+      console.log('transformedBuffered:', transformedBuffered);
     }
 
     setRevisions((prevRevisions) => prevRevisions.slice(1));
   };
 
   const handleUserInput = (operation) => {
-    console.log(ot.toString(operation));
     setText((prevText) => ot.apply(prevText, operation));
     if (awaited.length === 0) {
       setAwaited(operation);
