@@ -1,3 +1,4 @@
+/* eslint-disable react/no-array-index-key */
 import _ from 'lodash';
 import React from 'react';
 import {
@@ -24,45 +25,35 @@ export const makeSent = (operation, awaited, buffered) => ({
   header: (
     <div className="d-flex align-items-center">
       <ArrowUpCircle className="mr-3" color="blue" />
-      <div>
-        {`Sent an operation that consists of ${operation.length} atomic operations`}
-      </div>
+      <div>Sent an operation</div>
     </div>
   ),
   body: (
     <div>
-      <Accordion>
+      <Accordion className="mb-2">
         <Card>
           <Accordion.Toggle as={Card.Header} eventKey="0">
-            Operation
-          </Accordion.Toggle>
-          <Accordion.Collapse eventKey="0">
-            <Card.Body>
-              <Operation operation={operation} />
-            </Card.Body>
-          </Accordion.Collapse>
-        </Card>
-        <Card>
-          <Accordion.Toggle as={Card.Header} eventKey="1">
             Awaited
           </Accordion.Toggle>
-          <Accordion.Collapse eventKey="1">
+          <Accordion.Collapse eventKey="0">
             <Card.Body>
               <Operation operation={awaited} />
             </Card.Body>
           </Accordion.Collapse>
         </Card>
         <Card>
-          <Accordion.Toggle as={Card.Header} eventKey="2">
+          <Accordion.Toggle as={Card.Header} eventKey="1">
             Buffered
           </Accordion.Toggle>
-          <Accordion.Collapse eventKey="2">
+          <Accordion.Collapse eventKey="1">
             <Card.Body>
               <Operation operation={buffered} />
             </Card.Body>
           </Accordion.Collapse>
         </Card>
       </Accordion>
+      <div className="ml-4">Operation</div>
+      <Operation operation={operation} />
     </div>
   ),
 });
@@ -82,12 +73,20 @@ export const makeRevised = (
   header: (
     <div className="d-flex align-items-center">
       <ArrowRight className="mr-3" color="red" />
-      <div>
-        {`Revised an operation that consists of ${operation.length} atomic operations`}
+      <div>Revised an operation</div>
+    </div>
+  ),
+  body: (
+    <div>
+      <div className="d-flex">
+        <div className="mr-3">
+          <Operation operation={operation} />
+        </div>
+
+        <Operation operation={transformedOperation} />
       </div>
     </div>
   ),
-  body: <div>body</div>,
 });
 
 export const makeLoaded = (operations) => ({
@@ -99,7 +98,15 @@ export const makeLoaded = (operations) => ({
       <div>{`Loaded ${operations.length} new operations`}</div>
     </div>
   ),
-  body: <div>body</div>,
+  body: (
+    <div>
+      {operations.map((oper, i) => (
+        <div className="d-flex mb-3">
+          <Operation key={i} operation={oper} />
+        </div>
+      ))}
+    </div>
+  ),
 });
 
 export const makeEdited = (operation, awaited, buffered) => ({
@@ -108,24 +115,12 @@ export const makeEdited = (operation, awaited, buffered) => ({
   header: (
     <div className="d-flex align-items-center">
       <Keyboard className="mr-3" />
-      <div>
-        {`Edited the document resulting in an operation that consists of ${operation.length} new atomic operations`}
-      </div>
+      <div>Edited the document</div>
     </div>
   ),
   body: (
     <div>
-      <Accordion>
-        <Card>
-          <Accordion.Toggle as={Card.Header} eventKey="0">
-            Operation
-          </Accordion.Toggle>
-          <Accordion.Collapse eventKey="0">
-            <Card.Body>
-              <Operation operation={operation} />
-            </Card.Body>
-          </Accordion.Collapse>
-        </Card>
+      <Accordion className="mb-2">
         <Card>
           <Accordion.Toggle as={Card.Header} eventKey="1">
             Awaited
@@ -147,6 +142,8 @@ export const makeEdited = (operation, awaited, buffered) => ({
           </Accordion.Collapse>
         </Card>
       </Accordion>
+      <div className="ml-4">Operation</div>
+      <Operation operation={operation} />
     </div>
   ),
 });
@@ -157,9 +154,7 @@ export const makeAcknowledged = (operation) => ({
   header: (
     <div className="d-flex align-items-center">
       <Check className="mr-3" color="orange" />
-      <div>
-        {`Aknowledged own operation that consists of ${operation.length} atomic operations`}
-      </div>
+      <div>Aknowledged own operation</div>
     </div>
   ),
   body: <Operation operation={operation} />,

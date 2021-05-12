@@ -79,7 +79,7 @@ const App = ({
         if (newRevisions.length > 0) {
           setLastRevisionIndex(newRevisions[newRevisions.length - 1].index);
           setRevisions(newRevisions);
-          addToHistory(makeLoaded(newRevisions));
+          addToHistory(makeLoaded(newRevisions.map((rev) => rev.operation)));
           setIsLoading(false);
           break;
         }
