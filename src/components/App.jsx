@@ -39,7 +39,7 @@ const App = ({
 }) => {
   const [text, setText] = React.useState(initialText);
   const [awaited, setAwaited] = React.useState(ot.make());
-  const [operToSend, setOperToSend] = React.useState(ot.make());
+  const [isTimeToSend, setIsTimeToSend] = React.useState(false);
   const [buffered, setBuffered] = React.useState(ot.make());
   const [revisions, setRevisions] = React.useState([]);
   const [state, setState] = React.useState('editing');
@@ -57,15 +57,15 @@ const App = ({
   const sendOperation = () => {
     const sendWithRetry = withRetry(async () => {
       await axios.post(routes.userInputPath(documentId), {
-        operation: operToSend,
+        operation: awaited,
         clientId,
         syncIndex,
       });
     }, RETRY_INTERVAL);
 
-    addToHistory(makeSent(operToSend));
+    addToHistory(makeSent(awaited));
     sendWithRetry();
-    setOperToSend(ot.make());
+    setIsTimeToSend(false);
   };
 
   const loadRevisions = async () => {
@@ -98,7 +98,7 @@ const App = ({
 
     if (acknowledgedOwnOperation) {
       setAwaited(buffered);
-      setOperToSend(buffered);
+      setIsTimeToSend(true);
       setBuffered(ot.make());
       addToHistory(makeAcknowledged(awaited));
     } else {
@@ -115,13 +115,12 @@ const App = ({
       const newText = ot.apply(text, operTransformedTwice);
       setText(newText);
       setAwaited(transformedAwaited);
-      setOperToSend(transformedAwaited);
       setBuffered(transformedBuffered);
       addToHistory(makeRevised(operation, operTransformedTwice));
-      console.log('awaited:', awaited);
-      console.log('transformedAwaited:', transformedAwaited);
-      console.log('buffered:', buffered);
-      console.log('transformedBuffered:', transformedBuffered);
+      // console.log('awaited:', awaited);
+      // console.log('transformedAwaited:', transformedAwaited);
+      // console.log('buffered:', buffered);
+      // console.log('transformedBuffered:', transformedBuffered);
     }
 
     setRevisions((prevRevisions) => prevRevisions.slice(1));
@@ -131,7 +130,7 @@ const App = ({
     setText((prevText) => ot.apply(prevText, operation));
     if (awaited.length === 0) {
       setAwaited(operation);
-      setOperToSend(operation);
+      setIsTimeToSend(true);
     } else {
       setBuffered((prevBuffered) => ot.compose(prevBuffered, operation));
     }
@@ -148,10 +147,10 @@ const App = ({
   }, [revisions]);
 
   React.useEffect(() => {
-    if (mode === 'default' && operToSend.length > 0) {
+    if (mode === 'default' && awaited.length > 0 && isTimeToSend) {
       sendOperation();
     }
-  }, [operToSend]);
+  }, [awaited, isTimeToSend]);
 
   React.useEffect(async () => {
     if (mode === 'default' && state !== 'revising') {
@@ -173,7 +172,7 @@ const App = ({
             className="border-dark mr-3"
             variant="light"
             onClick={() => sendOperation()}
-            disabled={operToSend.length === 0}
+            disabled={awaited.length === 0 || !isTimeToSend}
           >
             Send
           </Button>
