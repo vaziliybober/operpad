@@ -6,8 +6,9 @@ import {
   ArrowDownCircle,
   Keyboard,
   ArrowRight,
-  Check,
+  Check2,
   Flag,
+  ArrowBarRight,
 } from 'react-bootstrap-icons';
 import { Accordion, Card } from 'react-bootstrap';
 import Operation from '../components/Operation.jsx';
@@ -19,7 +20,7 @@ export const makeInitial = () => ({
   body: null,
 });
 
-export const makeSent = (operation, awaited, buffered) => ({
+export const makeSent = (operation) => ({
   type: 'sent',
   id: _.uniqueId(),
   header: (
@@ -30,44 +31,12 @@ export const makeSent = (operation, awaited, buffered) => ({
   ),
   body: (
     <div>
-      <Accordion className="mb-2">
-        <Card>
-          <Accordion.Toggle as={Card.Header} eventKey="0">
-            Awaited
-          </Accordion.Toggle>
-          <Accordion.Collapse eventKey="0">
-            <Card.Body>
-              <Operation operation={awaited} />
-            </Card.Body>
-          </Accordion.Collapse>
-        </Card>
-        <Card>
-          <Accordion.Toggle as={Card.Header} eventKey="1">
-            Buffered
-          </Accordion.Toggle>
-          <Accordion.Collapse eventKey="1">
-            <Card.Body>
-              <Operation operation={buffered} />
-            </Card.Body>
-          </Accordion.Collapse>
-        </Card>
-      </Accordion>
-      <div className="ml-4">Operation</div>
       <Operation operation={operation} />
     </div>
   ),
 });
 
-export const makeRevised = (
-  operation,
-  transformedOperation,
-  awaited,
-  transformedAwaited,
-  buffered,
-  transformedBuffered,
-  text,
-  transformedText,
-) => ({
+export const makeRevised = (operation, transformedOperation) => ({
   type: 'received',
   id: _.uniqueId(),
   header: (
@@ -78,12 +47,14 @@ export const makeRevised = (
   ),
   body: (
     <div>
-      <div className="d-flex">
+      <div className="d-flex align-items-center">
         <div className="mr-3">
           <Operation operation={operation} />
         </div>
-
-        <Operation operation={transformedOperation} />
+        <ArrowBarRight size={30} className="mr-3" />
+        <div>
+          <Operation operation={transformedOperation} />
+        </div>
       </div>
     </div>
   ),
@@ -109,40 +80,17 @@ export const makeLoaded = (operations) => ({
   ),
 });
 
-export const makeEdited = (operation, awaited, buffered) => ({
+export const makeEdited = (operation) => ({
   type: 'edited',
   id: _.uniqueId(),
   header: (
     <div className="d-flex align-items-center">
-      <Keyboard className="mr-3" />
+      <Keyboard className="mr-3" color="brown" />
       <div>Edited the document</div>
     </div>
   ),
   body: (
     <div>
-      <Accordion className="mb-2">
-        <Card>
-          <Accordion.Toggle as={Card.Header} eventKey="1">
-            Awaited
-          </Accordion.Toggle>
-          <Accordion.Collapse eventKey="1">
-            <Card.Body>
-              <Operation operation={awaited} />
-            </Card.Body>
-          </Accordion.Collapse>
-        </Card>
-        <Card>
-          <Accordion.Toggle as={Card.Header} eventKey="2">
-            Buffered
-          </Accordion.Toggle>
-          <Accordion.Collapse eventKey="2">
-            <Card.Body>
-              <Operation operation={buffered} />
-            </Card.Body>
-          </Accordion.Collapse>
-        </Card>
-      </Accordion>
-      <div className="ml-4">Operation</div>
       <Operation operation={operation} />
     </div>
   ),
@@ -153,7 +101,7 @@ export const makeAcknowledged = (operation) => ({
   id: _.uniqueId(),
   header: (
     <div className="d-flex align-items-center">
-      <Check className="mr-3" color="orange" />
+      <Check2 className="mr-3" color="orange" />
       <div>Aknowledged own operation</div>
     </div>
   ),

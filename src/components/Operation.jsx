@@ -25,10 +25,12 @@ const atomicToJSX = ({ type, data }) => {
 };
 
 const Operation = ({ operation }) => (
-  <ListGroup>
+  <ListGroup variant="flush">
     {operation.map((aOper, i) => (
       // eslint-disable-next-line react/no-array-index-key
-      <ListGroup.Item key={i}>{atomicToJSX(aOper)}</ListGroup.Item>
+      <ListGroup.Item key={i} className="borderles">
+        {atomicToJSX(aOper)}
+      </ListGroup.Item>
     ))}
   </ListGroup>
 );

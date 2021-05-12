@@ -182,7 +182,7 @@ const App = ({
   const demoModeJSX = (
     <>
       <Row className="mb-3">
-        <Col className="d-flex align-items-center">
+        <Col className="d-flex align-items-center justify-content-center">
           <Button
             className="border-dark mr-3"
             variant="light"
@@ -241,7 +241,7 @@ const App = ({
           </CopyToClipboard>
         </div>
       </Jumbotron>
-      <Container className="mb-5">
+      <Container className="mb-5 pb-5">
         <Row className="mb-3">
           <Col className="border border-dark p-0">
             <Editor
