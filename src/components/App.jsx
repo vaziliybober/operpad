@@ -228,12 +228,14 @@ const App = ({
       </Jumbotron>
       <Container className="mb-5 pb-5">
         <Row className="mb-3">
-          <Col className="border border-dark p-0">
-            <Editor
-              text={text}
-              onUserInput={handleUserInput}
-              disabled={state === 'revising'}
-            />
+          <Col>
+            <div className="border border-dark p-0">
+              <Editor
+                text={text}
+                onUserInput={handleUserInput}
+                disabled={state === 'revising'}
+              />
+            </div>
           </Col>
         </Row>
         {mode === 'demo' ? demoModeJSX : null}
