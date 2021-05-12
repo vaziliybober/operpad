@@ -10,7 +10,6 @@ import {
   Flag,
   ArrowBarRight,
 } from 'react-bootstrap-icons';
-import { Accordion, Card } from 'react-bootstrap';
 import Operation from '../components/Operation.jsx';
 
 export const makeInitial = () => ({
@@ -72,8 +71,8 @@ export const makeLoaded = (operations) => ({
   body: (
     <div>
       {operations.map((oper, i) => (
-        <div className="d-flex mb-3">
-          <Operation key={i} operation={oper} />
+        <div className="d-flex mb-4 border" key={i}>
+          <Operation operation={oper} />
         </div>
       ))}
     </div>

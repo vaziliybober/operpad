@@ -56,6 +56,7 @@ const App = ({
 
   const sendOperation = () => {
     const sendWithRetry = withRetry(async () => {
+      console.log('retrying');
       await axios.post(routes.userInputPath(documentId), {
         operation: operToSend,
         clientId,
@@ -63,7 +64,7 @@ const App = ({
       });
     }, RETRY_INTERVAL);
 
-    addToHistory(makeSent(operToSend, awaited, buffered));
+    addToHistory(makeSent(operToSend));
     sendWithRetry();
     setOperToSend(ot.make());
   };
@@ -83,10 +84,10 @@ const App = ({
           setIsLoading(false);
           break;
         }
-        await new Promise((res) => setTimeout(res, RETRY_INTERVAL));
       } catch (e) {
         console.log("Couldn't load new operations", e);
       }
+      await new Promise((res) => setTimeout(res, RETRY_INTERVAL));
     }
   };
 
@@ -116,39 +117,23 @@ const App = ({
       setText(newText);
       setAwaited(transformedAwaited);
       setBuffered(transformedBuffered);
-      addToHistory(
-        makeRevised(
-          operation,
-          operTransformedTwice,
-          awaited,
-          transformedAwaited,
-          buffered,
-          transformedBuffered,
-          text,
-          newText,
-        ),
-      );
+      addToHistory(makeRevised(operation, operTransformedTwice));
     }
 
     setRevisions((prevRevisions) => prevRevisions.slice(1));
   };
 
   const handleUserInput = (operation) => {
-    const newText = ot.apply(text, operation);
-    let hAwaited = awaited;
-    let hBuffered = buffered;
-    setText(newText);
+    console.log(ot.toString(operation));
+    setText((prevText) => ot.apply(prevText, operation));
     if (awaited.length === 0) {
       setAwaited(operation);
-      hAwaited = operation;
       setOperToSend(operation);
     } else {
-      const newBuffered = ot.compose(buffered, operation);
-      setBuffered(newBuffered);
-      hBuffered = newBuffered;
+      setBuffered((prevBuffered) => ot.compose(prevBuffered, operation));
     }
 
-    addToHistory(makeEdited(operation, hAwaited, hBuffered, text, newText));
+    addToHistory(makeEdited(operation));
   };
 
   React.useEffect(() => {
@@ -156,7 +141,6 @@ const App = ({
       setState('editing');
     } else {
       setState('revising');
-      console.log('here');
     }
   }, [revisions]);
 
@@ -168,7 +152,6 @@ const App = ({
 
   React.useEffect(async () => {
     if (mode === 'default' && state !== 'revising') {
-      console.log('here');
       await loadRevisions();
     }
   }, [state]);
@@ -204,7 +187,7 @@ const App = ({
             className="border-dark mr-3"
             variant="light"
             onClick={() => loadRevisions()}
-            disabled={state === 'revising'}
+            disabled={state === 'revising' || isLoading}
           >
             Load
           </Button>
@@ -220,7 +203,7 @@ const App = ({
           )}
         </Col>
       </Row>
-      <Row>
+      <Row className="pl-2 pr-2">
         <Col>
           <History history={history} />
         </Col>
